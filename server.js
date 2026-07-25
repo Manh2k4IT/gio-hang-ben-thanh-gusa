@@ -266,7 +266,7 @@ function buildProductShareMeta(req, productId) {
     const canonicalUrl = `${baseUrl}/shop.html?productId=${id}`;
     const variants = normalizeImageList(product.images || product.image);
     const imagePath = String(product.image || variants[0] || "").trim();
-    const imageUrl = toAbsolutePublicUrl(imagePath, baseUrl) || `${baseUrl}/uploads/logogusa.jpg`;
+    const imageUrl = toAbsolutePublicUrl(imagePath, baseUrl) || `${baseUrl}/assets/default-logo.svg`;
 
     const productName = String(product.name || "Sản phẩm Giỏ hàng Gusa").trim() || "Sản phẩm Giỏ hàng Gusa";
     const productPrice = Math.max(0, Math.floor(Number(product.price) || 0)).toLocaleString("vi-VN");
@@ -702,7 +702,7 @@ const DEFAULT_ORDERS = [
 ];
 
 const DEFAULT_SETTINGS = {
-    shopLogo: "/uploads/logogusa.jpg",
+    shopLogo: "/assets/default-logo.svg",
     shopPublicUrl,
     productCategories: [
         "LINEN TƯNG",

@@ -2,7 +2,7 @@
   ? window.location.origin
   : "http://localhost:3000";
 const state = { products: [], orders: [] };
-const DEFAULT_SHOP_LOGO = "/uploads/logogusa.jpg";
+const DEFAULT_SHOP_LOGO = "/assets/default-logo.svg";
 const DEFAULT_PUBLIC_SHOP_URL = "";
 const DEFAULT_UPLOAD_MAX_FILE_SIZE_MB = 12;
 const CLIENT_IMAGE_MAX_DIMENSION_PX = 2000;
