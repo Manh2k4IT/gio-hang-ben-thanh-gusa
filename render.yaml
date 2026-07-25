@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: gio-hang-quan-4
+    name: gio-hang-ben-thanh
     env: node
     plan: starter
     rootDir: .
@@ -10,9 +10,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATA_DIR
-        value: /var/data/gio-hang-quan-4/data
+        value: /var/data/gio-hang-ben-thanh/data
       - key: UPLOAD_DIR
-        value: /var/data/gio-hang-quan-4/uploads
+        value: /var/data/gio-hang-ben-thanh/uploads
       - key: STARTUP_IMAGE_MAINTENANCE_ENABLED
         value: "false"
       - key: SHARP_MAX_RSS_MB
@@ -24,6 +24,6 @@ services:
       - key: IMAGE_CONVERT_ON_UPLOAD_ENABLED
         value: "false"
     disk:
-      name: gio-hang-quan-4-data
-      mountPath: /var/data/gio-hang-quan-4
+      name: gio-hang-ben-thanh-data
+      mountPath: /var/data/gio-hang-ben-thanh
       sizeGB: 10
