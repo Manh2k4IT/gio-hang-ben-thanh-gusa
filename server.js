@@ -1671,10 +1671,31 @@ function getVariantNameByImage(product, image) {
 
 }
 
+function normalizeVariantNameForMatch(value) {
+
+    return normalizeTextValue(value, "")
+        .toLowerCase()
+        .replace(/\((\d+(?:[\.,]\d+)?)\s*m\)\s*$/i, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+}
+
 function resolveVariantName(product, requestedImage, requestedVariantName, requestedVariantIndex) {
 
     const directName = normalizeTextValue(requestedVariantName, "");
-    if (directName) return directName;
+    if (directName) {
+        const names = normalizeVariantNames(product?.variantNames);
+        const directNameNormalized = normalizeVariantNameForMatch(directName);
+
+        const byName = names.find((item) => {
+            const raw = normalizeTextValue(item, "");
+            return raw.toLowerCase() === directName.toLowerCase()
+                || normalizeVariantNameForMatch(raw) === directNameNormalized;
+        });
+
+        return byName || directName;
+    }
 
     const images = normalizeImageList(product?.images || product?.image);
     const names = normalizeVariantNames(product?.variantNames);
@@ -1702,7 +1723,12 @@ function getVariantIndex(product, image, variantName) {
     const safeName = String(variantName || "").trim();
 
     if (safeName) {
-        const byName = names.findIndex((item) => String(item || "").trim().toLowerCase() === safeName.toLowerCase());
+        const normalizedSafeName = normalizeVariantNameForMatch(safeName);
+        const byName = names.findIndex((item) => {
+            const raw = String(item || "").trim();
+            return raw.toLowerCase() === safeName.toLowerCase()
+                || normalizeVariantNameForMatch(raw) === normalizedSafeName;
+        });
         if (byName >= 0) return byName;
     }
 
@@ -2471,6 +2497,8 @@ app.post("/checkout", (req, res) => {
         const itemVariantIndex = getVariantIndex(product, itemImage, itemVariantName);
         const itemSize = resolveSelectedSizeByVariant(product, itemVariantIndex, item.selectedSize || "");
         const stockInfo = getVariantStockInfo(product, itemVariantIndex, itemSize);
+        const itemUnitPrice = getVariantUnitPrice(product, itemVariantIndex);
+        const itemUnitOldPrice = getVariantUnitOldPrice(product, itemVariantIndex);
 
         if (stockInfo.stock <= 0) {
 
@@ -2486,6 +2514,10 @@ app.post("/checkout", (req, res) => {
 
         validItems.push({
             ...item,
+            price: itemUnitPrice,
+            oldPrice: itemUnitOldPrice,
+            image: itemImage,
+            variantName: itemVariantName,
             qty: safeQty,
             selectedSize: itemSize
         });
@@ -2570,7 +2602,7 @@ app.post("/checkout", (req, res) => {
 
 app.post("/checkout/quick", (req, res) => {
 
-    const { customer, phone, address, productId, variantIndex, variantName, size, qty } = req.body || {};
+    const { customer, phone, address, productId, variantIndex, variantName, variantImage, size, qty } = req.body || {};
     const id = Number(productId);
     const requestedQty = Math.max(1, Math.floor(Number(qty) || 0));
 
@@ -2587,16 +2619,22 @@ app.post("/checkout/quick", (req, res) => {
         return res.status(404).json({ error: "Sản phẩm không tồn tại" });
     }
 
-    const firstImage = Array.isArray(product.images) && product.images.length ? product.images[0] : product.image || "";
-    const effectiveVariantIndex = Number.isFinite(Number(variantIndex))
-        ? Math.max(0, Math.floor(Number(variantIndex)))
-        : getVariantIndex(product, firstImage, variantName);
-    const effectiveImage = resolvePreferredVariantImage(product, firstImage);
+    const variantImages = normalizeImageList(product.images || product.image);
+    const firstImage = variantImages[0] || product.image || "";
+    const maxVariantIndex = Math.max(0, variantImages.length - 1);
+    const effectiveVariantIndexRaw = Number.isFinite(Number(variantIndex))
+        ? Math.floor(Number(variantIndex))
+        : getVariantIndex(product, String(variantImage || "").trim() || firstImage, variantName);
+    const effectiveVariantIndex = Math.min(maxVariantIndex, Math.max(0, effectiveVariantIndexRaw));
+    const effectiveImage = variantImages[effectiveVariantIndex]
+        || String(variantImage || "").trim()
+        || resolvePreferredVariantImage(product, firstImage);
     const effectiveVariantName = resolveVariantName(product, effectiveImage, variantName, effectiveVariantIndex)
         || getVariantNameByImage(product, effectiveImage)
         || String(variantName || "").trim();
     const effectiveSize = resolveSelectedSizeByVariant(product, effectiveVariantIndex, size || "");
     const stockInfo = getVariantStockInfo(product, effectiveVariantIndex, effectiveSize);
+    const unitPrice = getVariantUnitPrice(product, effectiveVariantIndex);
 
     if (stockInfo.stock <= 0) {
         return res.status(400).json({ error: `Sản phẩm ${product.name} đã hết tồn kho` });
@@ -2609,7 +2647,7 @@ app.post("/checkout/quick", (req, res) => {
 
     decrementVariantStock(product, effectiveVariantIndex, effectiveSize, finalQty);
 
-    const subtotal = normalizeNumberValue(product.price, 0) * finalQty;
+    const subtotal = normalizeNumberValue(unitPrice, 0) * finalQty;
     const nowIso = new Date().toISOString();
     const quickItems = [mapOrderItemSnapshot({
         name: product.name,
