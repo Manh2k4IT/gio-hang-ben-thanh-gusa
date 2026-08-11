@@ -806,6 +806,18 @@ function formatMeterValue(value) {
   return safe.toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
 }
 
+function formatOrderItemQtyLabel(item) {
+  const qty = Math.max(0, Number(item?.qty) || 0);
+  const cutLength = getOrderItemCutLengthMeters(item);
+
+  if (Number.isFinite(cutLength) && cutLength > 0) {
+    const totalMeters = Math.round(qty * cutLength * 100) / 100;
+    return `${formatMeterValue(totalMeters)}m`;
+  }
+
+  return formatMeterValue(qty);
+}
+
 function getOrderTotalMeters(order) {
   const items = Array.isArray(order?.items) ? order.items : [];
 
@@ -938,6 +950,7 @@ function buildCustomerDataRecords(orders) {
     if (!key) return;
 
     const totalSpent = getOrderGrandTotal(order);
+    const orderMeters = getOrderTotalMeters(order);
     const orderTime = new Date(order?.updatedAt || order?.createdAt || 0).getTime();
     const products = Array.isArray(order?.items) ? order.items : [];
 
@@ -947,6 +960,7 @@ function buildCustomerDataRecords(orders) {
       phone: String(order?.phone || "").trim() || "Chưa có số",
       address: String(order?.address || "").trim() || "Chưa có địa chỉ",
       ordersCount: 0,
+      totalMeters: 0,
       totalSpent: 0,
       latestAt: order?.updatedAt || order?.createdAt || "",
       latestTime: Number.isFinite(orderTime) ? orderTime : 0,
@@ -955,6 +969,7 @@ function buildCustomerDataRecords(orders) {
     };
 
     existing.ordersCount += 1;
+    existing.totalMeters = Math.round((existing.totalMeters + Math.max(0, Number(orderMeters) || 0)) * 100) / 100;
     existing.totalSpent += totalSpent;
 
     products.forEach((item) => {
@@ -973,7 +988,7 @@ function buildCustomerDataRecords(orders) {
 
       existing.productPills.push({
         label: labelParts.join(" - ") || "Sản phẩm không rõ tên",
-        qty
+        qtyLabel: formatOrderItemQtyLabel(item)
       });
     });
 
@@ -1086,13 +1101,16 @@ function renderCustomerDataView() {
   if (!list) return;
 
   if (!records.length) {
-    list.innerHTML = '<tr><td colspan="4">Không có dữ liệu khách hàng phù hợp bộ lọc</td></tr>';
+    list.innerHTML = '<tr><td colspan="5">Không có dữ liệu khách hàng phù hợp bộ lọc</td></tr>';
     return;
   }
 
   list.innerHTML = records.map((customer) => `
     <tr>
-      <td class="customer-data-name-cell">${customer.customer}</td>
+      <td class="customer-data-name-cell">${customer.customer}
+        ${customer.productPills.length ? `<div class="order-items-wrap">${customer.productPills.map((item) => `<span class="order-item-pill">${item.label} x${item.qtyLabel}</span>`).join("")}</div>` : ""}
+      </td>
+      <td class="customer-data-meters-cell">${customer.totalMeters > 0 ? `${formatMeterValue(customer.totalMeters)}m` : "-"}</td>
       <td class="customer-data-phone-cell">${customer.phone}</td>
       <td class="customer-data-address-cell">${customer.address}</td>
       <td class="customer-data-time-cell">${formatOrderTime(customer.latestAt)}</td>
@@ -1134,7 +1152,7 @@ function renderProductInsightsView() {
   const list = document.getElementById("product-insights-list");
 
   if (totalProductsEl) totalProductsEl.textContent = String(records.length);
-  if (totalQtyEl) totalQtyEl.textContent = String(records.reduce((sum, item) => sum + item.totalQty, 0));
+  if (totalQtyEl) totalQtyEl.textContent = `${formatMeterValue(records.reduce((sum, item) => sum + item.totalQty, 0))}m`;
   if (topSkuEl) topSkuEl.textContent = records[0]?.sku || "-";
   if (topSkuLabelEl) topSkuLabelEl.textContent = productInsightsMode === "slow" ? "SKU bán chậm nhất" : "SKU bán chạy nhất";
   if (selectedYearEl) selectedYearEl.textContent = selectedYear || "Tất cả";
@@ -1156,7 +1174,7 @@ function renderProductInsightsView() {
         </div>
       </td>
       <td class="product-insights-category-cell">${product.category}</td>
-      <td class="product-insights-qty-cell">${product.totalQty}</td>
+      <td class="product-insights-qty-cell">${formatMeterValue(product.totalQty)}m</td>
       <td class="product-insights-time-cell">${formatOrderTime(product.latestAt)}</td>
     </tr>
   `).join("");
@@ -1321,7 +1339,7 @@ function exportOrdersExcel() {
     }[order.status] || order.status || "",
     "Sản phẩm": (order.items || []).map((item) => {
       const variantPart = item.variantName ? ` (${item.variantName}${item.size ? ` - ${item.size}` : ""})` : (item.size ? ` (${item.size})` : "");
-      return `${item.name}${variantPart} x${item.qty}`;
+      return `${item.name}${variantPart} x${formatOrderItemQtyLabel(item)}`;
     }).join("; ")
   }));
 
@@ -1362,7 +1380,7 @@ function exportOrdersPDF() {
     }[order.status] || order.status || "",
     (order.items || []).map((item) => {
       const variantPart = item.variantName ? ` (${item.variantName}${item.size ? ` - ${item.size}` : ""})` : (item.size ? ` (${item.size})` : "");
-      return `${item.name}${variantPart} x${item.qty}`;
+      return `${item.name}${variantPart} x${formatOrderItemQtyLabel(item)}`;
     }).join("; ")
   ]);
 
@@ -1975,7 +1993,7 @@ async function loadOrders() {
         const items = Array.isArray(order.items) ? order.items : [];
         const itemSummary = items.map((item) => {
           const variantPart = item.variantName ? ` (${item.variantName}${item.size ? ` - ${item.size}` : ""})` : (item.size ? ` (${item.size})` : "");
-          return `<span class="order-item-pill">${item.name}${variantPart} x${item.qty}</span>`;
+          return `<span class="order-item-pill">${item.name}${variantPart} x${formatOrderItemQtyLabel(item)}</span>`;
         }).join("");
 
         const skuSummary = [...new Set(items
