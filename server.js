@@ -1295,8 +1295,9 @@ function isProductSoldByCut(product) {
 
 function normalizeQuantityForProduct(product, value, fallback = 1) {
     const quantity = normalizeCartQuantity(value, fallback);
-    if (!isProductSoldByCut(product)) return quantity;
-    return Math.max(0, Math.floor(quantity + 1e-9));
+    if (quantity <= 0) return 0;
+    if (!isProductSoldByCut(product)) return Math.max(1, quantity);
+    return Math.max(1, Math.floor(quantity + 1e-9));
 }
 
 function normalizeImageList(value) {
