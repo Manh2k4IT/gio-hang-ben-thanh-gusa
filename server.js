@@ -1264,6 +1264,13 @@ function normalizeStockValue(value, fallback = 0) {
 
 }
 
+function normalizeCartQuantity(value, fallback = 1) {
+    const number = normalizeNumberValue(value, fallback);
+    const safe = Number.isFinite(number) ? number : fallback;
+    const clamped = Math.max(0, safe);
+    return Math.round(clamped * 100) / 100;
+}
+
 function normalizeImageList(value) {
 
     const list = Array.isArray(value)
@@ -1627,14 +1634,10 @@ function getVariantUnitOldPrice(product, variantIndex) {
 
 function decrementVariantStock(product, variantIndex, size, qty) {
 
-    const amountPieces = Math.max(0, Math.floor(Number(qty) || 0));
-    if (!amountPieces) return;
+    const amount = Math.max(0, Math.round(Number(qty) * 100) / 100);
+    if (!amount) return;
 
     const index = Math.max(0, Number(variantIndex) || 0);
-    const cutLength = getVariantUnitCutLength(product, index);
-    const amount = cutLength
-        ? Math.round((amountPieces * cutLength) * 100) / 100
-        : amountPieces;
     const variantCount = normalizeImageList(product?.images || product?.image).length;
     const stocks = normalizeVariantStocks(
         product?.variantColorStocks !== undefined ? product?.variantColorStocks : product?.variantStocks,
@@ -2604,7 +2607,7 @@ app.post("/checkout/quick", (req, res) => {
 
     const { customer, phone, address, productId, variantIndex, variantName, variantImage, size, qty } = req.body || {};
     const id = Number(productId);
-    const requestedQty = Math.max(1, Math.floor(Number(qty) || 0));
+    const requestedQty = normalizeCartQuantity(qty, 1);
 
     if (!customer || !phone || !address) {
         return res.status(400).json({ error: "Vui lòng nhập đầy đủ thông tin" });
@@ -3684,7 +3687,7 @@ app.post("/change", (req, res) => {
 
     }
 
-    const newQty = Number(qty);
+    const newQty = normalizeCartQuantity(qty, 0);
 
     if (!Number.isFinite(newQty) || newQty < 0) {
 
