@@ -306,6 +306,7 @@ function splitVariantNameAndLength(value) {
 function composeVariantName(row, index) {
   const name = String(row?.name || "").trim() || `Màu ${index + 1}`;
   const cutLength = parseVariantLengthInput(row?.cutLength);
+  if (!isFabricCutEnabled()) return name;
   if (!Number.isFinite(cutLength)) return name;
   return `${name} (${formatVariantLength(cutLength)}m)`;
 }
@@ -478,15 +479,28 @@ function updateVariantFilesHint() {
   const hint = document.getElementById("imagesFilesHint");
   if (!hint) return;
 
+  const isFabricCut = isFabricCutEnabled();
+
   const totalRows = variantRowsData.length;
   const withImage = variantRowsData.filter((row) => Boolean(row.file || row.existingUrl)).length;
 
   if (!totalRows) {
-    hint.textContent = "Mỗi dòng gồm ảnh, tên màu, chiều dài khúc (m), giá theo khổ và số mét tồn";
+    hint.textContent = isFabricCut
+      ? "Mỗi dòng gồm ảnh, tên màu, chiều dài khúc (m), giá theo khổ và số mét tồn"
+      : "Mỗi dòng gồm ảnh, tên màu, giá theo khổ và số mét tồn. Chiều dài khúc chỉ dùng cho vải khúc.";
     return;
   }
 
   hint.textContent = `Đã tạo ${totalRows} dòng màu, có ảnh ở ${withImage} dòng`;
+}
+
+function isFabricCutEnabled() {
+  return Boolean(document.getElementById("isFabricCut")?.checked);
+}
+
+function onFabricCutToggle() {
+  renderVariantRows();
+  updateVariantFilesHint();
 }
 
 function createVariantRowData(name = "", existingUrl = "", colorStock = null, cutLength = null, variantPrice = null, variantOldPrice = null) {
@@ -543,6 +557,8 @@ function renderVariantRows() {
   const container = document.getElementById("variantRows");
   if (!container) return;
 
+  const isFabricCut = isFabricCutEnabled();
+
   cleanupVariantObjectUrls();
 
   if (!variantRowsData.length) {
@@ -573,12 +589,12 @@ function renderVariantRows() {
             />
           </div>
           <div class="variant-field">
-            <span class="variant-field-label">Chiều dài mỗi khúc (m)</span>
+            <span class="variant-field-label">${isFabricCut ? "Chiều dài mỗi khúc (m)" : "Chiều dài khúc (tùy chọn)"}</span>
             <input
               type="text"
               class="variant-length-input"
               value="${Number.isFinite(Number(row.cutLength)) ? formatVariantLength(row.cutLength) : ""}"
-              placeholder="Ví dụ: 2.7"
+              placeholder="${isFabricCut ? "Ví dụ: 2.7" : "Chỉ nhập nếu là vải khúc"}"
               oninput="onVariantLengthInput('${row.id}', this.value)"
             />
           </div>
@@ -605,7 +621,7 @@ function renderVariantRows() {
             />
           </div>
           <div class="variant-field">
-            <span class="variant-field-label">Số mét tồn</span>
+            <span class="variant-field-label">${isFabricCut ? "Số mét tồn của các khúc" : "Số mét tồn"}</span>
             <input
               type="text"
               class="variant-stock-input"
@@ -809,24 +825,22 @@ function formatMeterValue(value) {
 function formatOrderItemQtyLabel(item) {
   const qty = Math.max(0, Number(item?.qty) || 0);
   const cutLength = getOrderItemCutLengthMeters(item);
-
-  if (Number.isFinite(cutLength) && cutLength > 0) {
-    const totalMeters = Math.round(qty * cutLength * 100) / 100;
-    return `${formatMeterValue(totalMeters)}m`;
+  if (item?.isFabricCut && Number.isFinite(cutLength) && cutLength > 0) {
+    return `${formatMeterValue(qty * cutLength)}m`;
   }
-
-  return formatMeterValue(qty);
+  return `${formatMeterValue(qty)}m`;
 }
 
 function getOrderTotalMeters(order) {
   const items = Array.isArray(order?.items) ? order.items : [];
 
   const total = items.reduce((sum, item) => {
-    const cutLength = getOrderItemCutLengthMeters(item);
-    if (!Number.isFinite(cutLength) || cutLength <= 0) return sum;
-
     const qty = Math.max(0, Number(item?.qty) || 0);
-    return sum + (qty * cutLength);
+    const cutLength = getOrderItemCutLengthMeters(item);
+    if (item?.isFabricCut && Number.isFinite(cutLength) && cutLength > 0) {
+      return sum + (qty * cutLength);
+    }
+    return sum + qty;
   }, 0);
 
   if (!Number.isFinite(total) || total <= 0) return null;
@@ -1185,6 +1199,7 @@ function resetProductForm() {
   const name = document.getElementById("name");
   const sku = document.getElementById("sku");
   const stock = document.getElementById("stock");
+  const isFabricCut = document.getElementById("isFabricCut");
   const category = document.getElementById("category");
   const imageUrl = document.getElementById("imageUrl");
   const modalTitle = document.getElementById("modal-title");
@@ -1198,6 +1213,7 @@ function resetProductForm() {
   if (name) name.value = "";
   if (sku) sku.value = "";
   if (stock) stock.value = "";
+  if (isFabricCut) isFabricCut.checked = false;
   const options = getCategoryOptions();
   if (category) {
     const selectableOptions = getSelectableCategoryOptions(options);
@@ -1443,6 +1459,7 @@ function openModal(product = null) {
   const name = document.getElementById("name");
   const sku = document.getElementById("sku");
   const stock = document.getElementById("stock");
+  const isFabricCut = document.getElementById("isFabricCut");
   const category = document.getElementById("category");
   const imageUrl = document.getElementById("imageUrl");
 
@@ -1458,6 +1475,7 @@ function openModal(product = null) {
     if (name) name.value = product.name || "";
     if (sku) sku.value = product.sku || "";
     if (stock) stock.value = product.stock || "";
+    if (isFabricCut) isFabricCut.checked = Boolean(product.isFabricCut);
     if (category) {
       const nextCategory = normalizeCategoryLabel(product.category || "");
       const selectableOptions = getSelectableCategoryOptions();
@@ -1744,6 +1762,7 @@ async function saveProduct() {
   const sku = document.getElementById("sku").value.trim();
   const category = document.getElementById("category").value;
   const stock = document.getElementById("stock").value;
+  const isFabricCut = isFabricCutEnabled();
   const productId = document.getElementById("productId").value;
   const saveBtn = document.querySelector(".btn-save");
 
@@ -1794,7 +1813,7 @@ async function saveProduct() {
       const missingFields = [];
       if (!Boolean(row.file || row.existingUrl)) missingFields.push("Ảnh màu");
       if (!row.rawName) missingFields.push("Tên màu");
-      if (!Number.isFinite(Number(row.cutLength))) missingFields.push("Chiều dài mỗi khúc (m)");
+      if (isFabricCut && !Number.isFinite(Number(row.cutLength))) missingFields.push("Chiều dài mỗi khúc (m)");
       if (!Number.isFinite(Number(row.variantPrice))) missingFields.push("Giá khổ này (đ)");
       if (!Number.isFinite(Number(row.colorStock))) missingFields.push("Số mét tồn");
       if (missingFields.length) {
@@ -1827,6 +1846,7 @@ async function saveProduct() {
       .map((row, index) => ({
         name: composeVariantName(row, index),
         image: uploadedVariantImages[index] || row.existingUrl || fallbackExistingImages[index] || baseVariantImage,
+        cutLength: isFabricCut ? parseVariantLengthInput(row.cutLength) : null,
         variantPrice: Number.isFinite(Number(row.variantPrice)) ? Math.max(0, Math.round(Number(row.variantPrice))) : null,
         variantOldPrice: Number.isFinite(Number(row.variantOldPrice)) ? Math.max(0, Math.round(Number(row.variantOldPrice))) : null,
         colorStock: Number.isFinite(Number(row.colorStock)) ? Math.max(0, Math.round(Number(row.colorStock) * 100) / 100) : null
@@ -1876,6 +1896,7 @@ async function saveProduct() {
 
     const variantCutLengths = finalVariantRows.length
       ? finalVariantRows.map((row) => {
+          if (!isFabricCut) return null;
           const length = parseVariantLengthInput(row.cutLength);
           return Number.isFinite(length) ? length : null;
         })
@@ -1910,7 +1931,7 @@ async function saveProduct() {
       res = await fetch(API + (isEditing ? `/product/${productId}` : "/product/add"), {
         method: isEditing ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, sku, category, price: Math.round(basePriceFromFirstVariant), oldPrice: variantOldPrices[0] ?? null, stock: stockValueForSave, image: finalImage, images, variantNames, variantPrices, variantOldPrices, variantCutLengths, sizes, variantSizes, variantColorStocks }),
+        body: JSON.stringify({ name, sku, category, price: Math.round(basePriceFromFirstVariant), oldPrice: variantOldPrices[0] ?? null, stock: stockValueForSave, image: finalImage, images, variantNames, variantPrices, variantOldPrices, variantCutLengths, sizes, variantSizes, variantColorStocks, isFabricCut }),
         signal: saveController ? saveController.signal : undefined
       });
     } catch (error) {
@@ -2266,6 +2287,7 @@ window.onVariantLengthInput = onVariantLengthInput;
 window.onVariantPriceInput = onVariantPriceInput;
 window.onVariantOldPriceInput = onVariantOldPriceInput;
 window.onVariantStocksInput = onVariantStocksInput;
+window.onFabricCutToggle = onFabricCutToggle;
 window.saveProduct = saveProduct;
 window.load = load;
 window.switchTab = switchTab;

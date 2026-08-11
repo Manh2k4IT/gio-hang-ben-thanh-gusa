@@ -753,13 +753,16 @@ function getOrderDayKey(value) {
 }
 
 function mapOrderItemSnapshot(item) {
+    const cutLengthValue = Number(item?.variantCutLength ?? item?.cutLength);
     return {
         name: normalizeTextValue(item?.name, "Sản phẩm"),
         qty: normalizeCartQuantity(item?.qty, 1),
         sku: normalizeTextValue(item?.sku, ""),
         category: normalizeTextValue(item?.category, ""),
         variantName: normalizeTextValue(item?.variantName, ""),
-        size: normalizeTextValue(item?.selectedSize || item?.size, "")
+        size: normalizeTextValue(item?.selectedSize || item?.size, ""),
+        isFabricCut: normalizeBooleanFlag(item?.isFabricCut, false),
+        variantCutLength: Number.isFinite(cutLengthValue) && cutLengthValue > 0 ? Math.round(cutLengthValue * 100) / 100 : null
     };
 }
 
@@ -888,6 +891,7 @@ function normalizeProductOrder() {
         product.oldPrice = normalizeOptionalOldPrice(product.oldPrice, null);
         product.stock = normalizeStockValue(product.stock, 0);
         product.image = normalizeTextValue(product.image, "");
+        product.isFabricCut = normalizeBooleanFlag(product.isFabricCut, false);
 
         if (!Number.isFinite(Number(product.sortOrder))) {
 
@@ -1020,8 +1024,8 @@ function reconcileCartStockForProduct(productId) {
         const normalizedSizeKey = buildSizeKey(normalizedSize);
         const normalizedItemKey = buildCartItemKey(normalizedVariantKey, normalizedSizeKey);
 
-        const stockCap = normalizeCartQuantity(getVariantStockInfo(product, normalizedVariantIndex, normalizedSize).stock, 0);
-        const currentQty = normalizeCartQuantity(item.qty, 0);
+        const stockCap = normalizeQuantityForProduct(product, getVariantStockInfo(product, normalizedVariantIndex, normalizedSize).stock, 0);
+        const currentQty = normalizeQuantityForProduct(product, item.qty, 0);
         const cappedQty = Math.min(currentQty, stockCap);
 
         if (cappedQty <= 0) {
@@ -1060,6 +1064,8 @@ function reconcileCartStockForProduct(productId) {
             sizeKey: normalizedSizeKey,
             itemKey: normalizedItemKey,
             category: getProductCategory(product),
+            isFabricCut: isProductSoldByCut(product),
+            variantCutLength: getVariantUnitCutLength(product, normalizedVariantIndex),
             qty: cappedQty,
             __stockCap: stockCap
         });
@@ -1067,8 +1073,9 @@ function reconcileCartStockForProduct(productId) {
 
     const normalizedItems = [...mergedByItemKey.values()]
         .map((item) => {
-            const maxQty = normalizeCartQuantity(item.__stockCap, 0);
-            const safeQty = normalizeCartQuantity(item.qty, 0);
+            const product = findProductById(item.id);
+            const maxQty = normalizeQuantityForProduct(product, item.__stockCap, 0);
+            const safeQty = normalizeQuantityForProduct(product, item.qty, 0);
             const qty = Math.min(safeQty, maxQty);
             if (qty !== safeQty) changed = true;
 
@@ -1269,6 +1276,27 @@ function normalizeCartQuantity(value, fallback = 1) {
     const safe = Number.isFinite(number) ? number : fallback;
     const clamped = Math.max(0, safe);
     return Math.round(clamped * 100) / 100;
+}
+
+function normalizeBooleanFlag(value, fallback = false) {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "string") {
+        const normalized = value.trim().toLowerCase();
+        if (["true", "1", "yes", "on"].includes(normalized)) return true;
+        if (["false", "0", "no", "off", ""].includes(normalized)) return false;
+    }
+    if (typeof value === "number") return value !== 0;
+    return Boolean(fallback);
+}
+
+function isProductSoldByCut(product) {
+    return normalizeBooleanFlag(product?.isFabricCut, false);
+}
+
+function normalizeQuantityForProduct(product, value, fallback = 1) {
+    const quantity = normalizeCartQuantity(value, fallback);
+    if (!isProductSoldByCut(product)) return quantity;
+    return Math.max(0, Math.floor(quantity + 1e-9));
 }
 
 function normalizeImageList(value) {
@@ -1567,26 +1595,22 @@ function getVariantStockInfo(product, variantIndex, size) {
     const colorStock = stocks[index];
     const totalStock = normalizeStockValue(product?.stock, 0);
     const cutLength = getVariantUnitCutLength(product, index);
+    const soldByCut = isProductSoldByCut(product) && Number.isFinite(Number(cutLength)) && Number(cutLength) > 0;
 
     if (Number.isFinite(Number(colorStock))) {
         const normalizedColorStock = normalizeStockValue(colorStock, 0);
-        const availableStock = Math.min(normalizedColorStock, totalStock);
-        const availablePieces = cutLength
-            ? Math.round(((availableStock + 1e-9) / cutLength) * 100) / 100
-            : Math.round(availableStock * 100) / 100;
+        const availableStock = Math.round(Math.min(normalizedColorStock, totalStock) * 100) / 100;
         return {
-            stock: Math.max(0, availablePieces),
+            stock: Math.max(0, soldByCut ? Math.floor((availableStock + 1e-9) / Number(cutLength)) : availableStock),
             explicit: true,
             key: ""
         };
     }
 
-    const availablePieces = cutLength
-        ? Math.round(((totalStock + 1e-9) / cutLength) * 100) / 100
-        : Math.round(totalStock * 100) / 100;
+    const availableStock = Math.round(totalStock * 100) / 100;
 
     return {
-        stock: Math.max(0, availablePieces),
+        stock: Math.max(0, soldByCut ? Math.floor((availableStock + 1e-9) / Number(cutLength)) : availableStock),
         explicit: false,
         key: ""
     };
@@ -1638,6 +1662,10 @@ function decrementVariantStock(product, variantIndex, size, qty) {
     if (!amount) return;
 
     const index = Math.max(0, Number(variantIndex) || 0);
+    const cutLength = getVariantUnitCutLength(product, index);
+    const amountToSubtract = isProductSoldByCut(product) && Number.isFinite(Number(cutLength)) && Number(cutLength) > 0
+        ? Math.round(amount * Number(cutLength) * 100) / 100
+        : amount;
     const variantCount = normalizeImageList(product?.images || product?.image).length;
     const stocks = normalizeVariantStocks(
         product?.variantColorStocks !== undefined ? product?.variantColorStocks : product?.variantStocks,
@@ -1646,14 +1674,14 @@ function decrementVariantStock(product, variantIndex, size, qty) {
     const colorStock = stocks[index];
 
     if (Number.isFinite(Number(colorStock))) {
-        stocks[index] = normalizeStockValue(Number(colorStock) - amount, 0);
+        stocks[index] = normalizeStockValue(Number(colorStock) - amountToSubtract, 0);
         product.variantStocks = stocks;
         product.variantColorStocks = [...stocks];
-        product.stock = normalizeStockValue(Number(product.stock) - amount, 0);
+        product.stock = normalizeStockValue(Number(product.stock) - amountToSubtract, 0);
         return;
     }
 
-    product.stock = normalizeStockValue(Number(product.stock) - amount, 0);
+    product.stock = normalizeStockValue(Number(product.stock) - amountToSubtract, 0);
 
 }
 
@@ -1901,7 +1929,7 @@ function getInCartQtyForVariant(productId, sessionId, category, variantKey) {
         const itemVariantKey = String(item?.variantKey || buildVariantKey(item?.variantName, item?.image));
         if (itemVariantKey !== safeVariantKey) return sum;
 
-        return Math.round((sum + normalizeCartQuantity(item?.qty, 0)) * 100) / 100;
+        return Math.round((sum + normalizeQuantityForProduct(findProductById(item?.id), item?.qty, 0)) * 100) / 100;
     }, 0);
 }
 
@@ -2607,7 +2635,6 @@ app.post("/checkout/quick", (req, res) => {
 
     const { customer, phone, address, productId, variantIndex, variantName, variantImage, size, qty } = req.body || {};
     const id = Number(productId);
-    const requestedQty = normalizeCartQuantity(qty, 1);
 
     if (!customer || !phone || !address) {
         return res.status(400).json({ error: "Vui lòng nhập đầy đủ thông tin" });
@@ -2636,6 +2663,7 @@ app.post("/checkout/quick", (req, res) => {
         || getVariantNameByImage(product, effectiveImage)
         || String(variantName || "").trim();
     const effectiveSize = resolveSelectedSizeByVariant(product, effectiveVariantIndex, size || "");
+    const requestedQty = normalizeQuantityForProduct(product, qty, 1);
     const stockInfo = getVariantStockInfo(product, effectiveVariantIndex, effectiveSize);
     const unitPrice = getVariantUnitPrice(product, effectiveVariantIndex);
 
@@ -2658,7 +2686,9 @@ app.post("/checkout/quick", (req, res) => {
         sku: product.sku || "",
         category: getProductCategory(product),
         variantName: effectiveVariantName || "",
-        size: effectiveSize || ""
+        size: effectiveSize || "",
+        isFabricCut: isProductSoldByCut(product),
+        variantCutLength: getVariantUnitCutLength(product, effectiveVariantIndex)
     })];
     const mergeTarget = findMergeableOrderByPhoneAndDay(phone, nowIso);
 
@@ -2741,6 +2771,8 @@ app.post("/product/add", (req, res) => {
 
         variantCutLengths,
 
+        isFabricCut,
+
         category
 
     } = body;
@@ -2749,6 +2781,7 @@ app.post("/product/add", (req, res) => {
     const priceValue = normalizeNumberValue(price, 0);
     const oldPriceValue = normalizeOptionalOldPrice(oldPrice, null);
     const stockValue = normalizeStockValue(stock, 0);
+    const isFabricCutValue = normalizeBooleanFlag(isFabricCut, false);
 
     if (!nameValue) {
 
@@ -2808,6 +2841,9 @@ app.post("/product/add", (req, res) => {
         : oldPriceValue;
     const normalizedVariantCutLengths = normalizeVariantCutLengths(variantCutLengths, variantRowCount)
         .map((value, index) => {
+            if (!isFabricCutValue) {
+                return null;
+            }
             if (Number.isFinite(Number(value)) && Number(value) > 0) {
                 return Math.round(Number(value) * 100) / 100;
             }
@@ -2838,6 +2874,7 @@ app.post("/product/add", (req, res) => {
         variantPrices: normalizedVariantPrices,
         variantOldPrices: normalizedVariantOldPrices,
         variantCutLengths: normalizedVariantCutLengths,
+        isFabricCut: isFabricCutValue,
         sortOrder: getNextSortOrder(),
 
         hidden: false,
@@ -2909,6 +2946,8 @@ app.put("/product/:id", (req, res) => {
 
         variantCutLengths,
 
+        isFabricCut,
+
         category
 
     } = body;
@@ -2928,6 +2967,7 @@ app.put("/product/:id", (req, res) => {
         product.oldPrice = normalizeOptionalOldPrice(oldPrice, null);
     }
     if (stock !== undefined) product.stock = normalizeStockValue(stock, product.stock || 0);
+    if (isFabricCut !== undefined) product.isFabricCut = normalizeBooleanFlag(isFabricCut, product.isFabricCut);
 
     if (image !== undefined) product.image = normalizeTextValue(image, product.image || "");
     if (images !== undefined) {
@@ -3009,6 +3049,9 @@ app.put("/product/:id", (req, res) => {
         const variantRowCount = getProductVariantRowCount(product, Array.isArray(variantCutLengths) ? variantCutLengths.length : 1);
         product.variantCutLengths = normalizeVariantCutLengths(variantCutLengths, variantRowCount)
             .map((value, index) => {
+                if (!isProductSoldByCut(product)) {
+                    return null;
+                }
                 if (Number.isFinite(Number(value)) && Number(value) > 0) {
                     return Math.round(Number(value) * 100) / 100;
                 }
@@ -3016,6 +3059,11 @@ app.put("/product/:id", (req, res) => {
                 const parsed = extractCutLengthFromVariantName(product.variantNames[index]);
                 return Number.isFinite(Number(parsed)) ? parsed : null;
             });
+    }
+
+    if (!isProductSoldByCut(product)) {
+        const variantRowCount = getProductVariantRowCount(product, 1);
+        product.variantCutLengths = Array.from({ length: variantRowCount }, () => null);
     }
 
     const firstVariantPriceRaw = Array.isArray(product.variantPrices) ? product.variantPrices[0] : null;
@@ -3562,6 +3610,8 @@ app.post("/add", (req, res) => {
         item.selectedSize = effectiveSize;
         item.sizeKey = effectiveSizeKey;
         item.itemKey = effectiveItemKey;
+        item.isFabricCut = isProductSoldByCut(product);
+        item.variantCutLength = getVariantUnitCutLength(product, effectiveVariantIndex);
         item.sessionId = sessionId;
         item.updatedAt = Date.now();
 
@@ -3584,6 +3634,8 @@ app.post("/add", (req, res) => {
             selectedSize: effectiveSize,
             sizeKey: effectiveSizeKey,
             itemKey: effectiveItemKey,
+            isFabricCut: isProductSoldByCut(product),
+            variantCutLength: getVariantUnitCutLength(product, effectiveVariantIndex),
             sessionId,
             updatedAt: Date.now(),
 
@@ -3687,18 +3739,6 @@ app.post("/change", (req, res) => {
 
     }
 
-    const newQty = normalizeCartQuantity(qty, 0);
-
-    if (!Number.isFinite(newQty) || newQty < 0) {
-
-        return res.status(400).json({
-
-            error: "Số lượng không hợp lệ"
-
-        });
-
-    }
-
     item.sku = product.sku || item.sku || "";
     item.category = getProductCategory(product);
 
@@ -3714,6 +3754,17 @@ app.post("/change", (req, res) => {
     const nextStockInfo = getVariantStockInfo(product, nextVariantIndex, nextSize);
     const nextSizeKey = buildSizeKey(nextSize);
     const nextItemKey = buildCartItemKey(nextVariantKey, nextSizeKey);
+    const newQty = normalizeQuantityForProduct(product, qty, 0);
+
+    if (!Number.isFinite(newQty) || newQty < 0) {
+
+        return res.status(400).json({
+
+            error: "Số lượng không hợp lệ"
+
+        });
+
+    }
 
     if (newQty > nextStockInfo.stock) {
 
@@ -3752,6 +3803,8 @@ app.post("/change", (req, res) => {
             duplicateItem.selectedSize = nextSize;
             duplicateItem.sizeKey = nextSizeKey;
             duplicateItem.itemKey = nextItemKey;
+            duplicateItem.isFabricCut = isProductSoldByCut(product);
+            duplicateItem.variantCutLength = getVariantUnitCutLength(product, nextVariantIndex);
             duplicateItem.updatedAt = Date.now();
             cart = cart.filter((x) => x !== item);
 
@@ -3768,6 +3821,8 @@ app.post("/change", (req, res) => {
     item.selectedSize = nextSize;
     item.sizeKey = nextSizeKey;
     item.itemKey = nextItemKey;
+    item.isFabricCut = isProductSoldByCut(product);
+    item.variantCutLength = getVariantUnitCutLength(product, nextVariantIndex);
     item.qty = newQty;
     item.updatedAt = Date.now();
 
