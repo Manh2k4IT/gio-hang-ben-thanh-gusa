@@ -193,7 +193,7 @@ function parseVariantLengthInput(value) {
   const normalized = String(value || "").trim().replace(",", ".");
   if (!normalized) return null;
   const length = Number(normalized);
-  if (!Number.isFinite(length) || length <= 0) return null;
+  if (!Number.isFinite(length) || length < 1) return null;
   return Math.round(length * 100) / 100;
 }
 
@@ -499,6 +499,13 @@ function isFabricCutEnabled() {
 }
 
 function onFabricCutToggle() {
+  if (isFabricCutEnabled()) {
+    variantRowsData.forEach((row) => {
+      if (!Number.isFinite(Number(row?.cutLength)) || Number(row.cutLength) < 1) {
+        row.cutLength = 1;
+      }
+    });
+  }
   renderVariantRows();
   updateVariantFilesHint();
 }
@@ -591,10 +598,12 @@ function renderVariantRows() {
           <div class="variant-field">
             <span class="variant-field-label">${isFabricCut ? "Chiều dài mỗi khúc (m)" : "Chiều dài khúc (tùy chọn)"}</span>
             <input
-              type="text"
+              type="number"
+              min="1"
+              step="0.1"
               class="variant-length-input"
-              value="${Number.isFinite(Number(row.cutLength)) ? formatVariantLength(row.cutLength) : ""}"
-              placeholder="${isFabricCut ? "Ví dụ: 2.7" : "Chỉ nhập nếu là vải khúc"}"
+              value="${Number.isFinite(Number(row.cutLength)) ? formatVariantLength(row.cutLength) : (isFabricCut ? "1" : "")}"
+              placeholder="${isFabricCut ? "Từ 1m trở lên" : "Chỉ nhập nếu là vải khúc"}"
               oninput="onVariantLengthInput('${row.id}', this.value)"
             />
           </div>
@@ -641,7 +650,8 @@ function renderVariantRows() {
 }
 
 function addVariantRow(defaultName = "", existingUrl = "", defaultCutLength = null) {
-  variantRowsData.push(createVariantRowData(defaultName, existingUrl, null, defaultCutLength, null, null));
+  const nextCutLength = isFabricCutEnabled() && !Number.isFinite(Number(defaultCutLength)) ? 1 : defaultCutLength;
+  variantRowsData.push(createVariantRowData(defaultName, existingUrl, null, nextCutLength, null, null));
   syncVariantNamesByIndex();
   renderVariantRows();
 }

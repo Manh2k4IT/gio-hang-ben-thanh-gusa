@@ -903,7 +903,7 @@ td img{
 
 }
 
-.form input{
+.form input:not([type="checkbox"]){
 
     margin-top:6px;
 
@@ -1963,5 +1963,37 @@ td img{
 .toggle-visibility:hover{
 
     filter:brightness(.95);
+
+}
+
+.product-mode-toggle{
+
+    display:flex !important;
+
+    align-items:center;
+
+    gap:10px;
+
+    white-space:nowrap;
+
+    font-weight:700;
+
+    color:#2563eb !important;
+
+}
+
+.product-mode-toggle input[type="checkbox"]{
+
+    width:18px;
+
+    height:18px;
+
+    margin:0;
+
+    padding:0;
+
+    flex:0 0 auto;
+
+    accent-color:#2563eb;
 
 }
