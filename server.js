@@ -755,7 +755,7 @@ function getOrderDayKey(value) {
 function mapOrderItemSnapshot(item) {
     return {
         name: normalizeTextValue(item?.name, "Sản phẩm"),
-        qty: Math.max(1, Math.floor(Number(item?.qty) || 1)),
+        qty: normalizeCartQuantity(item?.qty, 1),
         sku: normalizeTextValue(item?.sku, ""),
         category: normalizeTextValue(item?.category, ""),
         variantName: normalizeTextValue(item?.variantName, ""),
@@ -1020,8 +1020,8 @@ function reconcileCartStockForProduct(productId) {
         const normalizedSizeKey = buildSizeKey(normalizedSize);
         const normalizedItemKey = buildCartItemKey(normalizedVariantKey, normalizedSizeKey);
 
-        const stockCap = Math.max(0, Math.floor(Number(getVariantStockInfo(product, normalizedVariantIndex, normalizedSize).stock) || 0));
-        const currentQty = Math.max(0, Math.floor(Number(item.qty) || 0));
+        const stockCap = normalizeCartQuantity(getVariantStockInfo(product, normalizedVariantIndex, normalizedSize).stock, 0);
+        const currentQty = normalizeCartQuantity(item.qty, 0);
         const cappedQty = Math.min(currentQty, stockCap);
 
         if (cappedQty <= 0) {
@@ -1067,8 +1067,8 @@ function reconcileCartStockForProduct(productId) {
 
     const normalizedItems = [...mergedByItemKey.values()]
         .map((item) => {
-            const maxQty = Math.max(0, Math.floor(Number(item.__stockCap) || 0));
-            const safeQty = Math.max(0, Math.floor(Number(item.qty) || 0));
+            const maxQty = normalizeCartQuantity(item.__stockCap, 0);
+            const safeQty = normalizeCartQuantity(item.qty, 0);
             const qty = Math.min(safeQty, maxQty);
             if (qty !== safeQty) changed = true;
 
@@ -1572,8 +1572,8 @@ function getVariantStockInfo(product, variantIndex, size) {
         const normalizedColorStock = normalizeStockValue(colorStock, 0);
         const availableStock = Math.min(normalizedColorStock, totalStock);
         const availablePieces = cutLength
-            ? Math.floor((availableStock + 1e-9) / cutLength)
-            : Math.floor(availableStock);
+            ? Math.round(((availableStock + 1e-9) / cutLength) * 100) / 100
+            : Math.round(availableStock * 100) / 100;
         return {
             stock: Math.max(0, availablePieces),
             explicit: true,
@@ -1582,8 +1582,8 @@ function getVariantStockInfo(product, variantIndex, size) {
     }
 
     const availablePieces = cutLength
-        ? Math.floor((totalStock + 1e-9) / cutLength)
-        : Math.floor(totalStock);
+        ? Math.round(((totalStock + 1e-9) / cutLength) * 100) / 100
+        : Math.round(totalStock * 100) / 100;
 
     return {
         stock: Math.max(0, availablePieces),
@@ -1901,7 +1901,7 @@ function getInCartQtyForVariant(productId, sessionId, category, variantKey) {
         const itemVariantKey = String(item?.variantKey || buildVariantKey(item?.variantName, item?.image));
         if (itemVariantKey !== safeVariantKey) return sum;
 
-        return sum + Math.max(0, Math.floor(Number(item?.qty) || 0));
+        return Math.round((sum + normalizeCartQuantity(item?.qty, 0)) * 100) / 100;
     }, 0);
 }
 
