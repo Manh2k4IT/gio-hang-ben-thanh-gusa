@@ -1969,11 +1969,11 @@ function getFirstAvailableVariantForSession(product, sessionId, category, prefer
 
 function getNextSortOrder() {
 
-    return products.reduce((max, product) => {
+    return products.reduce((min, product) => {
 
         const order = Number(product.sortOrder);
 
-        return Number.isFinite(order) ? Math.max(max, order) : max;
+        return Number.isFinite(order) ? Math.min(min, order) : min;
 
     }, 0) - 1;
 
