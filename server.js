@@ -1912,8 +1912,9 @@ function normalizeCategoryList(values) {
 function getCategoryOptions() {
 
     const fromSettings = normalizeCategoryList(appSettings?.productCategories);
+    const fromDefaults = normalizeCategoryList(DEFAULT_SETTINGS.productCategories);
     const fromProducts = normalizeCategoryList(products.map((item) => getProductCategory(item)));
-    return normalizeCategoryList([...fromSettings, ...fromProducts]);
+    return normalizeCategoryList([...fromSettings, ...fromDefaults, ...fromProducts]);
 
 }
 
