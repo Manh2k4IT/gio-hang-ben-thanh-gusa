@@ -715,6 +715,7 @@ const DEFAULT_SETTINGS = {
         "LINEN BỐ SỚ XÉO",
         "LINEN TẰM GÂN THÊU",
         "Linen bột",
+        "Tơ gân",
         "Khác"
     ],
     wholesaleCareStatuses: {}
