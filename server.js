@@ -716,6 +716,7 @@ const DEFAULT_SETTINGS = {
         "LINEN TẰM GÂN THÊU",
         "Linen bột",
         "Tơ gân",
+        "Cotton",
         "Khác"
     ],
     wholesaleCareStatuses: {}
