@@ -18,7 +18,8 @@ const FIXED_PRODUCT_CATEGORIES = [
   "LINEN TƠ MÀU",
   "LINEN ƯỚT",
   "LINEN BỐ SỚ XÉO",
-  "LINEN TẰM GÂN THÊU"
+  "LINEN TẰM GÂN THÊU",
+  "Linen bột"
 ];
 const CATEGORY_GROUPS = [
   {
