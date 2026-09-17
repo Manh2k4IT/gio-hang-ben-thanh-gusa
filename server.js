@@ -714,6 +714,7 @@ const DEFAULT_SETTINGS = {
         "LINEN ƯỚT",
         "LINEN BỐ SỚ XÉO",
         "LINEN TẰM GÂN THÊU",
+        "Linen bột",
         "Khác"
     ],
     wholesaleCareStatuses: {}
@@ -1972,7 +1973,7 @@ function getNextSortOrder() {
 
         return Number.isFinite(order) ? Math.max(max, order) : max;
 
-    }, 0) + 1;
+    }, 0) - 1;
 
 }
 
@@ -1980,15 +1981,17 @@ function getNextCategorySortOrder(category) {
 
     const normalizedCategory = normalizeCategoryName(category);
 
-    return products.reduce((max, product) => {
+    const firstOrder = products.reduce((min, product) => {
 
-        if (getProductCategory(product) !== normalizedCategory) return max;
+        if (getProductCategory(product) !== normalizedCategory) return min;
 
         const order = Number(product.categorySortOrder);
 
-        return Number.isFinite(order) ? Math.max(max, order) : max;
+        return Number.isFinite(order) ? Math.min(min, order) : min;
 
-    }, 0) + 1;
+    }, 0);
+
+    return firstOrder - 1;
 
 }
 
