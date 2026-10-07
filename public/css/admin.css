@@ -1966,6 +1966,56 @@ td img{
 
 }
 
+.purchase-limit-product-checkbox{
+    width:18px;
+    height:18px;
+    accent-color:#008060;
+    cursor:pointer;
+}
+
+.purchase-limit-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    margin-top:16px;
+}
+
+#purchase-limit-toggle:disabled{
+    opacity:0.45;
+    cursor:not-allowed;
+    box-shadow:none;
+}
+
+.purchase-limit-selected-count{
+    color:#dc2626;
+    font-size:20px;
+    font-weight:800;
+}
+
+.fabric-cut-badge{
+    display:inline-block;
+    margin:4px 0;
+    padding:3px 9px;
+    border-radius:6px;
+    background:#fff1e6;
+    color:#b45309;
+    font-size:12px;
+    font-weight:700;
+    white-space:nowrap;
+}
+
+.purchase-limit-active-status{
+    display:block;
+    margin-top:6px;
+    color:#008060;
+    font-size:12px;
+    font-weight:700;
+}
+
+.purchase-limit-active-status[hidden]{
+    display:none;
+}
+
 .product-mode-toggle{
 
     display:flex !important;

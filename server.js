@@ -8,6 +8,15 @@ const { rateLimit } = require("express-rate-limit");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
+const {
+    PurchaseLimitStateError,
+    createPurchaseLimit,
+    getPurchaseLimitSettings,
+    configurePurchaseLimit,
+    checkPurchaseLimit,
+    recordLimitedPurchase,
+    restorePurchaseLimit
+} = require("./purchase-limit");
 let sharp = null;
 
 try {
@@ -848,6 +857,7 @@ let cart = [];
 let orders = cloneData(DEFAULT_ORDERS);
 
 let appSettings = cloneData(DEFAULT_SETTINGS);
+let purchaseLimit = createPurchaseLimit();
 
 let dataRevision = 0;
 let persistTimer = null;
@@ -2092,7 +2102,8 @@ async function writeStateFileOnce() {
         products,
         cart,
         orders,
-            settings: appSettings,
+        settings: appSettings,
+        purchaseLimit,
         dataRevision
     };
 
@@ -2169,6 +2180,7 @@ function loadPersistedState() {
     try {
         const raw = fs.readFileSync(stateFile, "utf8");
         const parsed = JSON.parse(raw || "{}");
+        purchaseLimit = restorePurchaseLimit(parsed.purchaseLimit);
 
         products = Array.isArray(parsed.products) ? parsed.products : cloneData(DEFAULT_PRODUCTS);
         cart = Array.isArray(parsed.cart)
@@ -2185,11 +2197,13 @@ function loadPersistedState() {
         const revision = Number(parsed.dataRevision);
         dataRevision = Number.isFinite(revision) && revision >= 0 ? Math.floor(revision) : 0;
     } catch (error) {
+        if (error instanceof PurchaseLimitStateError) throw error;
         console.error("Không thể đọc dữ liệu state, dùng dữ liệu mặc định:", error.message);
         products = cloneData(DEFAULT_PRODUCTS);
         cart = [];
         orders = cloneData(DEFAULT_ORDERS);
         appSettings = cloneData(DEFAULT_SETTINGS);
+        purchaseLimit = createPurchaseLimit();
         dataRevision = 0;
     }
 
@@ -2197,6 +2211,7 @@ function loadPersistedState() {
 
 loadPersistedState();
 normalizeProductOrder();
+purchaseLimit.productIds = purchaseLimit.productIds.filter((id) => isProductSoldByCut(findProductById(id)));
 reconcileEntireCart();
 persistStateImmediate().catch(err => {
     console.error("Không thể lưu state ban đầu:", err.message);
@@ -2262,6 +2277,7 @@ async function migrateLegacyUploadsToWebpIfNeeded() {
 
 function updateClient() {
 
+    purchaseLimit.productIds = purchaseLimit.productIds.filter((id) => isProductSoldByCut(findProductById(id)));
     dataRevision += 1;
 
     pendingBroadcastRevision = dataRevision;
@@ -2279,7 +2295,7 @@ app.get("/products", (req, res) => {
     const category = getRequestedCategory(req);
     const productsToSend = getVisibleProducts(category);
 
-    res.json(productsToSend);
+    res.json(productsToSend.map((product) => ({ ...product, isPurchaseLimited: isLimitedFabricCut(product) })));
 
 });
 
@@ -2308,7 +2324,7 @@ app.get("/products/all", (req, res) => {
         ? getOrderedProductsByCategory(category)
         : getOrderedProducts();
 
-    res.json(productsToSend);
+    res.json(productsToSend.map((product) => ({ ...product, isPurchaseLimited: isLimitedFabricCut(product) })));
 
 });
 
@@ -2398,6 +2414,80 @@ app.put("/settings/logo", (req, res) => {
     });
 
 });
+
+app.get("/settings/purchase-limit", (req, res) => {
+    setNoCacheHeaders(res);
+    res.json(getPurchaseLimitSettings(purchaseLimit));
+});
+
+app.put("/settings/purchase-limit", (req, res) => {
+    const { enabled, productIds, roundId } = req.body || {};
+    if (roundId !== purchaseLimit.roundId) {
+        return res.status(409).json({ error: "Cấu hình đã thay đổi, vui lòng tải lại trước khi lưu" });
+    }
+    if (!Array.isArray(productIds) || productIds.some((id) => !findProductById(id))) {
+        return res.status(400).json({ error: "Danh sách sản phẩm không hợp lệ hoặc có sản phẩm đã xóa" });
+    }
+    if (productIds.some((id) => !isProductSoldByCut(findProductById(id)))) {
+        return res.status(400).json({ error: "Giới hạn chỉ áp dụng cho sản phẩm vải khúc" });
+    }
+
+    let next;
+    try {
+        next = configurePurchaseLimit(purchaseLimit, enabled, productIds);
+    } catch (error) {
+        return res.status(400).json({ error: error.message });
+    }
+
+    purchaseLimit = next;
+    updateClient();
+    res.json(getPurchaseLimitSettings(purchaseLimit));
+});
+
+function isLimitedFabricCut(product) {
+    return Boolean(product)
+        && isProductSoldByCut(product)
+        && purchaseLimit.enabled
+        && purchaseLimit.productIds.includes(Number(product.id));
+}
+
+function validateLimitedCheckout(req, res, items) {
+    const quantities = new Map();
+    for (const item of items) {
+        const id = Number(item.id);
+        if (!isLimitedFabricCut(findProductById(id))) continue;
+        quantities.set(id, (quantities.get(id) || 0) + Number(item.qty));
+    }
+
+    const excessive = [...quantities.entries()].filter(([, qty]) => qty > 1);
+    if (excessive.length) {
+        res.status(400).json({
+            error: `Mỗi khách chỉ được mua 1 khúc cho mỗi mã: ${excessive.map(([id]) => findProductById(id).sku || findProductById(id).name).join(", ")}`,
+            code: "PURCHASE_LIMIT_QUANTITY",
+            productIds: excessive.map(([id]) => id)
+        });
+        return null;
+    }
+
+    let check;
+    try {
+        check = checkPurchaseLimit(purchaseLimit, req.body.phone, [...quantities.keys()]);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+        return null;
+    }
+    if (check.blocked?.length) {
+        const names = check.blocked.map((id) => findProductById(id)?.name || `#${id}`);
+        res.status(409).json({
+            error: `Số điện thoại này đã mua ${names.join(", ")} trong đợt hiện tại. Mỗi mã vải khúc chỉ được mua 1 khúc và không được đặt lại.`,
+            code: "PURCHASE_LIMIT_REACHED",
+            productIds: check.blocked
+        });
+        return null;
+    }
+
+    return check;
+}
 
 app.put("/settings/wholesale-care", (req, res) => {
 
@@ -2516,6 +2606,8 @@ app.post("/checkout", (req, res) => {
     }
 
     const validItems = [];
+    const limitCheck = validateLimitedCheckout(req, res, checkoutItems);
+    if (!limitCheck) return;
     let skippedItems = 0;
     let adjustedItems = 0;
 
@@ -2624,6 +2716,7 @@ app.post("/checkout", (req, res) => {
     } else {
         cart = cart.filter(item => normalizeSessionId(item.sessionId) !== sessionId);
     }
+    recordLimitedPurchase(purchaseLimit, limitCheck, validItems.map((item) => Number(item.id)));
     updateClient();
 
     res.json({
@@ -2670,7 +2763,17 @@ app.post("/checkout/quick", (req, res) => {
         || getVariantNameByImage(product, effectiveImage)
         || String(variantName || "").trim();
     const effectiveSize = resolveSelectedSizeByVariant(product, effectiveVariantIndex, size || "");
+    if (qty !== undefined && (!Number.isFinite(Number(qty)) || Number(qty) < 1
+        || (isProductSoldByCut(product) && !Number.isInteger(Number(qty))))) {
+        return res.status(400).json({
+            error: isProductSoldByCut(product)
+                ? "Vải khúc phải đặt số khúc nguyên, tối thiểu 1 khúc"
+                : "Số mét đặt phải hợp lệ, tối thiểu 1m"
+        });
+    }
     const requestedQty = normalizeQuantityForProduct(product, qty, 1);
+    const limitCheck = validateLimitedCheckout(req, res, [{ id, qty: requestedQty }]);
+    if (!limitCheck) return;
     const stockInfo = getVariantStockInfo(product, effectiveVariantIndex, effectiveSize);
     const unitPrice = getVariantUnitPrice(product, effectiveVariantIndex);
 
@@ -2730,6 +2833,7 @@ app.post("/checkout/quick", (req, res) => {
         responseOrder = newOrder;
     }
 
+    recordLimitedPurchase(purchaseLimit, limitCheck, [id]);
     updateClient();
 
     res.json({
@@ -3504,6 +3608,14 @@ app.post("/add", (req, res) => {
 
     }
 
+    if (isLimitedFabricCut(product) && cart.some((item) => Number(item.id) === Number(product.id)
+        && normalizeSessionId(item.sessionId) === sessionId && Number(item.qty) >= 1)) {
+        return res.status(400).json({
+            error: "Mỗi khách chỉ được mua 1 khúc cho mã này",
+            code: "PURCHASE_LIMIT_QUANTITY"
+        });
+    }
+
     if (requestedCategory && getProductCategory(product) !== requestedCategory) {
 
         return res.status(400).json({
@@ -3781,6 +3893,16 @@ app.post("/change", (req, res) => {
 
         });
 
+    }
+
+    const otherQty = cart.filter((entry) => entry !== item && Number(entry.id) === Number(id)
+        && normalizeSessionId(entry.sessionId) === sessionId)
+        .reduce((sum, entry) => sum + Number(entry.qty), 0);
+    if (newQty > 0 && isLimitedFabricCut(product) && newQty + otherQty > 1) {
+        return res.status(400).json({
+            error: "Mỗi khách chỉ được mua 1 khúc cho mã này, kể cả khác màu hoặc khổ",
+            code: "PURCHASE_LIMIT_QUANTITY"
+        });
     }
 
     if (newQty > 0) {

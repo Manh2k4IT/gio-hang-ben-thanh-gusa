@@ -44,6 +44,12 @@ Mac dinh:
 
 Co the doi bang bien moi truong khi deploy.
 
+## Gioi han mua 1 khuc
+
+Trong trang quan tri, chon cac san pham vai khuc roi bat gioi han. Moi so dien thoai chi duoc mua mot khuc cho moi ma da chon trong dot hien tai; gioi han duoc kiem tra ca o gio hang va dat nhanh. Tat va bat lai se bat dau dot moi. Cau hinh va lich su so dien thoai da bam duoc luu trong `DATA_DIR/state.json`; API cau hinh khong tra lich su nay.
+
+Chay kiem thu bang `npm run test:purchase-limit`.
+
 ## Bien moi truong
 
 - `PORT`: cong server (mac dinh `3000`)
@@ -117,4 +123,3 @@ Luu y: Neu khong gan persistent disk thi data va upload se mat sau moi lan redep
 
 - Mau env production: `.env.production.example`
 - Checklist trien khai 10 phut: `GO-LIVE-CHECKLIST.md`
-

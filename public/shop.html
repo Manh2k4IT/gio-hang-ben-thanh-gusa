@@ -543,6 +543,25 @@
       line-height: 1.2;
     }
 
+    .purchase-limit-offer-note {
+      margin: 6px 0;
+      color: #dc2626;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.5;
+      animation: offer-note-shake 3s ease-in-out infinite;
+    }
+
+    @keyframes offer-note-shake {
+      0%, 80%, 100% { transform: translateX(0); }
+      84%, 92% { transform: translateX(-1px); }
+      88%, 96% { transform: translateX(1px); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .purchase-limit-offer-note { animation: none; }
+    }
+
     .cart-total {
       margin-top: 16px;
       padding-top: 16px;
@@ -1739,6 +1758,12 @@
       return Boolean(product?.isFabricCut);
     }
 
+    function renderPurchaseLimitOfferNote(product) {
+      return product?.isPurchaseLimited
+        ? '<div class="purchase-limit-offer-note">Giá ưu đãi áp dụng 1 lần mua trên mỗi khách.</div>'
+        : "";
+    }
+
     function getAvailableSizesByVariant(product, variantIndex, fallbackSize = "") {
       if (Array.isArray(product?.availableSizes) && product.availableSizes.length) {
         return product.availableSizes.map((item) => String(item || "").trim()).filter(Boolean);
@@ -1830,6 +1855,7 @@
     }
 
     function normalizeQtyForProduct(product, rawValue, maxQty = Number.MAX_SAFE_INTEGER) {
+      if (product?.isPurchaseLimited) maxQty = Math.min(1, maxQty);
       const minQty = getQuantityMinForProduct(product);
       const parsedValue = QuantityUtils.parseQuantityInputValue(rawValue, minQty);
       const normalizedValue = isFabricCutProduct(product)
@@ -1884,7 +1910,7 @@
         const sameByImage = safeImage && itemImage === safeImage;
         const sameByName = !safeImage && safeName && itemName === safeName;
 
-        if (!sameByImage && !sameByName) return sum;
+        if (!productsById.get(targetId)?.isPurchaseLimited && !sameByImage && !sameByName) return sum;
 
         return sum + Math.max(0, QuantityUtils.normalizeQuantityValue(item?.qty, 0));
       }, 0);
@@ -2245,9 +2271,6 @@
     let quickOrderMode = false;
     let cartPopupHistoryActive = false;
     let successModalHistoryActive = false;
-    let quantityHoldTimer = null;
-    let quantityHoldAction = null;
-    let quantityHoldStep = 0.1;
     let quickOrderState = {
       productId: null,
       variantIndex: 0,
@@ -2263,37 +2286,6 @@
         qty: 1,
         size: ""
       };
-    }
-
-    function stopQuantityHold() {
-      if (quantityHoldTimer) {
-        clearInterval(quantityHoldTimer);
-        quantityHoldTimer = null;
-      }
-      quantityHoldAction = null;
-    }
-
-    function startQuantityHold(action, step = 0.1) {
-      stopQuantityHold();
-      quantityHoldStep = step;
-      quantityHoldAction = action;
-      action();
-      quantityHoldTimer = setInterval(() => {
-        if (quantityHoldAction) quantityHoldAction();
-      }, 120);
-    }
-
-    function attachQuantityHoldHandlers(button, action, step = 0.1) {
-      if (!button) return;
-      button.addEventListener("mousedown", () => startQuantityHold(action, step));
-      button.addEventListener("mouseup", stopQuantityHold);
-      button.addEventListener("mouseleave", stopQuantityHold);
-      button.addEventListener("touchstart", (event) => {
-        event.preventDefault();
-        startQuantityHold(action, step);
-      }, { passive: false });
-      button.addEventListener("touchend", stopQuantityHold);
-      button.addEventListener("touchcancel", stopQuantityHold);
     }
 
     function updateShopCartBadge() {
@@ -2434,6 +2426,7 @@
               <button class="category-cart-btn" onclick="openCategoryPage('${productCategory.replace(/'/g, "\\'")}')">${productCategory}</button>
             </div>
             <div class="product-name">${p.name}</div>
+            ${renderPurchaseLimitOfferNote(p)}
             <div class="product-meta product-sku">SKU: ${p.sku || "—"}</div>
             <div class="product-meta product-stock">Tồn kho: ${formatVariantStockDisplay(p, getPreferredInStockVariantIndex(p, Number(p.id)), Number(p.stock || 0))}</div>
             <div class="price-row">
@@ -2712,6 +2705,7 @@
                   ${oldPrice > price ? `<span class="popup-price-old">${(oldPrice * item.qty).toLocaleString()}đ</span>` : ""}
                 </div>
                 <div class="popup-product-name">${item.name}</div>
+                ${renderPurchaseLimitOfferNote(product)}
                 ${finalSelectedSize ? `<div class="popup-meta">Size: ${finalSelectedSize}</div>` : ""}
               </div>
             </div>
@@ -2766,7 +2760,7 @@
               <div class="qty-control">
                 <button class="qty-btn" data-qty-action="minus" data-qty-target="popup" data-item-id="${item.id}" data-variant-key="${String(item.variantKey || "default")}" data-size-key="${String(item.sizeKey || "size:default")}" data-item-key="${String(item.itemKey || "")}">−</button>
                 <span class="qty-value">${qtyDisplay}</span>
-                <button class="qty-btn" data-qty-action="plus" data-qty-target="popup" data-item-id="${item.id}" data-variant-key="${String(item.variantKey || "default")}" data-size-key="${String(item.sizeKey || "size:default")}" data-item-key="${String(item.itemKey || "")}" ${Number(item.qty) + getQuantityStepForProduct(product || item) > comboStock ? "disabled" : ""}>+</button>
+                <button class="qty-btn" data-qty-action="plus" data-qty-target="popup" data-item-id="${item.id}" data-variant-key="${String(item.variantKey || "default")}" data-size-key="${String(item.sizeKey || "size:default")}" data-item-key="${String(item.itemKey || "")}" ${Number(item.qty) + getQuantityStepForProduct(product || item) > comboStock || product?.isPurchaseLimited && Number(item.qty) >= 1 ? "disabled" : ""}>+</button>
               </div>
             </div>
             ` : ""}
@@ -2807,6 +2801,7 @@
       `;
 
       popupBody.innerHTML = html;
+      bindQuantityButtons();
     }
 
     async function changeQtyPopup(id, qty, variantKey = "", sizeKey = "", itemKey = "") {
@@ -3036,6 +3031,7 @@
                   <img src="${item.image || "https://placehold.co/80x80?text=No+Image"}" alt="${item.name}" loading="lazy" decoding="async" />
                   <div class="cart-info">
                     <div class="cart-name">${item.name}</div>
+                    ${renderPurchaseLimitOfferNote(product)}
                     <div class="cart-qty cart-meta-compact">${selectedVariantName ? `Đã chọn: ${selectedVariantName}` : ""}${selectedSize ? `${selectedVariantName ? " / " : "Đã chọn: "}${selectedSize}` : ""}</div>
                     <div class="cart-qty">SKU: ${item.sku || "—"} · ${item.variantName ? `Tồn màu: ${formatVariantStockDisplay(product || item, selectedVariantIndex, Number(item.comboStock ?? product?.stock ?? item.stock ?? 0))}` : `Tồn kho: ${formatVariantStockDisplay(product || item, selectedVariantIndex, Number(item.comboStock ?? product?.stock ?? item.stock ?? 0))}`}</div>
                     <div class="cart-option-grid">
@@ -3058,9 +3054,9 @@
                     </div>
                     <div class="qty-control">
                       <button class="qty-btn" data-qty-action="minus" data-qty-target="cart" data-item-id="${item.id}" data-variant-key="${String(item.variantKey || "default")}" data-size-key="${String(item.sizeKey || "size:default")}" data-item-key="${String(item.itemKey || "")}">−</button>
-                      <input class="qty-input" type="number" min="${getQuantityMinForProduct(product || item)}" step="${getQuantityStepForProduct(product || item)}" value="${QuantityUtils.formatQuantityValue(item.qty)}" onchange='applyQtyInput(${item.id}, this.value, ${JSON.stringify(item.variantKey || "default")}, ${JSON.stringify(item.sizeKey || "size:default")}, ${JSON.stringify(item.itemKey || "")}, ${stockLimit})' />
+                      <input class="qty-input" type="number" min="${getQuantityMinForProduct(product || item)}" max="${product?.isPurchaseLimited ? 1 : stockLimit}" step="${getQuantityStepForProduct(product || item)}" value="${QuantityUtils.formatQuantityValue(item.qty)}" onchange='applyQtyInput(${item.id}, this.value, ${JSON.stringify(item.variantKey || "default")}, ${JSON.stringify(item.sizeKey || "size:default")}, ${JSON.stringify(item.itemKey || "")}, ${stockLimit})' />
                       <span class="qty-unit">${getQuantityUnitLabel(product || item)}</span>
-                      <button class="qty-btn" data-qty-action="plus" data-qty-target="cart" data-item-id="${item.id}" data-variant-key="${String(item.variantKey || "default")}" data-size-key="${String(item.sizeKey || "size:default")}" data-item-key="${String(item.itemKey || "")}" ${Number(item.qty) + getQuantityStepForProduct(product || item) > stockLimit ? "disabled" : ""}>+</button>
+                      <button class="qty-btn" data-qty-action="plus" data-qty-target="cart" data-item-id="${item.id}" data-variant-key="${String(item.variantKey || "default")}" data-size-key="${String(item.sizeKey || "size:default")}" data-item-key="${String(item.itemKey || "")}" ${Number(item.qty) + getQuantityStepForProduct(product || item) > stockLimit || product?.isPurchaseLimited && Number(item.qty) >= 1 ? "disabled" : ""}>+</button>
                     </div>
                   </div>
                   <div class="price-block">
@@ -3096,7 +3092,7 @@
       document.getElementById("cart").innerHTML = html;
       restoreCheckoutDraft(draft);
       restoreCheckoutFocus(focusState);
-      bindQuantityHoldButtons();
+      bindQuantityButtons();
     }
 
     function renderQuickOrderPopup() {
@@ -3139,6 +3135,7 @@
                 ${oldPrice > price ? `<span class="popup-price-old">${(oldPrice * Math.max(1, Number(quickOrderState.qty || 1))).toLocaleString()}đ</span>` : ""}
               </div>
               <div class="popup-product-name">${product.name}</div>
+              ${renderPurchaseLimitOfferNote(product)}
               <div class="popup-meta">Màu: ${selectedVariantName}</div>
               ${selectedSize ? `<div class="popup-meta">Size: ${selectedSize}</div>` : ""}
               <div class="popup-meta">Tồn kho: ${stock > 0 ? formatVariantStockDisplay(product, selectedVariantIndex, Number(product?.stock || 0)) : "Hết hàng"}</div>
@@ -3188,9 +3185,9 @@
           <div class="popup-section-title">Số lượng</div>
           <div class="qty-control quick-order-qty">
             <button class="qty-btn" data-qty-action="minus" data-qty-target="quick" ${quickOrderState.qty <= getQuantityMinForProduct(product) ? "disabled" : ""}>−</button>
-            <input class="qty-input" type="number" min="${getQuantityMinForProduct(product)}" step="${getQuantityStepForProduct(product)}" value="${QuantityUtils.formatQuantityValue(quickOrderState.qty)}" onchange='applyQuickOrderQtyInput(this.value)' />
+            <input class="qty-input" type="number" min="${getQuantityMinForProduct(product)}" max="${product.isPurchaseLimited ? 1 : stock}" step="${getQuantityStepForProduct(product)}" value="${QuantityUtils.formatQuantityValue(quickOrderState.qty)}" onchange='applyQuickOrderQtyInput(this.value)' />
             <span class="qty-unit">${getQuantityUnitLabel(product)}</span>
-            <button class="qty-btn" data-qty-action="plus" data-qty-target="quick" ${Number(quickOrderState.qty) + getQuantityStepForProduct(product) > stock ? "disabled" : ""}>+</button>
+            <button class="qty-btn" data-qty-action="plus" data-qty-target="quick" ${Number(quickOrderState.qty) + getQuantityStepForProduct(product) > stock || product.isPurchaseLimited && Number(quickOrderState.qty) >= 1 ? "disabled" : ""}>+</button>
           </div>
 
           <div class="popup-selected-combo">${stock <= 0 ? "Sản phẩm đang hết hàng, vui lòng chọn màu khác" : `Quý khách đang chọn ${selectedVariantName}${selectedSize ? `, size ${selectedSize}` : ""} với số lượng ${quickQtyDisplay}`}</div>
@@ -3205,7 +3202,7 @@
           </form>
         </div>
       `;
-      bindQuantityHoldButtons();
+      bindQuantityButtons();
     }
 
     function selectQuickOrderVariant(variantIndex) {
@@ -3254,31 +3251,7 @@
       changeQuickOrderQty(nextQty);
     }
 
-    function getQtyActionHandler(target, id, variantKey = "", sizeKey = "", itemKey = "") {
-      const action = (delta) => {
-        if (target === "quick") {
-          const product = getQuickOrderProduct();
-          if (!product) return;
-          const stock = getColorStockByVariant(product, getQuickOrderSelectedVariantIndex(product), Number(product?.stock || 0));
-          const nextQty = normalizeQtyForProduct(product, Number(quickOrderState.qty) + delta, stock);
-          changeQuickOrderQty(nextQty);
-          return;
-        }
-
-        const currentQty = Number((target === "popup" ? latestCartItems.find((item) => String(item.itemKey || "") === String(itemKey || "") || (Number(item.id) === Number(id) && String(item.variantKey || "") === String(variantKey || "") && String(item.sizeKey || "") === String(sizeKey || "")))?.qty : 0) || 0);
-        const product = productsById.get(Number(id)) || null;
-        const nextQty = normalizeQtyForProduct(product, currentQty + delta, Number.MAX_SAFE_INTEGER);
-        if (target === "popup") {
-          changeQtyPopup(id, nextQty, variantKey, sizeKey, itemKey);
-        } else {
-          changeQty(id, nextQty, variantKey, sizeKey, itemKey);
-        }
-      };
-
-      return () => action(target === "quick" ? 0 : 0);
-    }
-
-    function bindQuantityHoldButtons() {
+    function bindQuantityButtons() {
       document.querySelectorAll(".qty-btn[data-qty-action]").forEach((button) => {
         const action = button.dataset.qtyAction;
         const target = button.dataset.qtyTarget || "cart";
@@ -3307,7 +3280,7 @@
           }
         };
 
-        attachQuantityHoldHandlers(button, handler, getQuantityStepForProduct(target === "quick" ? getQuickOrderProduct() : (productsById.get(Number(itemId)) || null)));
+        button.onclick = handler;
       });
     }
 

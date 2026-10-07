@@ -2,6 +2,9 @@
   ? window.location.origin
   : "http://localhost:3000";
 const state = { products: [], orders: [] };
+let purchaseLimitSettings = null;
+let purchaseLimitBusy = false;
+let purchaseLimitSelectedIds = new Set();
 const DEFAULT_SHOP_LOGO = "/assets/default-logo.svg";
 const DEFAULT_PUBLIC_SHOP_URL = "";
 const DEFAULT_UPLOAD_MAX_FILE_SIZE_MB = 12;
@@ -1634,6 +1637,7 @@ async function load() {
       const haystack = `${p.name || ""} ${p.sku || ""}`.toLowerCase();
       return haystack.includes(search);
     });
+    updatePurchaseLimitSelectAllButton();
 
     const totalItems = filtered.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / PRODUCT_PAGE_SIZE));
@@ -1653,10 +1657,19 @@ async function load() {
           <td class="drag-cell">
             <span class="drag-handle" data-product-id="${p.id}" title="Giữ và kéo để đổi thứ tự">☰</span>
           </td>
+          <td>
+            <input type="checkbox" class="purchase-limit-product-checkbox" value="${p.id}"
+              aria-label="Áp dụng giới hạn cho sản phẩm"
+              ${purchaseLimitSelectedIds.has(Number(p.id)) ? "checked" : ""}
+              ${purchaseLimitBusy || !purchaseLimitSettings || !p.isFabricCut ? "disabled" : ""}
+              title="${p.isFabricCut ? "Mỗi số điện thoại chỉ được mua 1 khúc cho mã này" : "Chỉ áp dụng giới hạn cho vải khúc"}"
+              onchange="selectPurchaseLimitProduct(this)">
+          </td>
           <td><img src="${p.image || "https://placehold.co/80x80?text=No+Image"}" width="60" height="60" loading="lazy" decoding="async" style="object-fit:cover"></td>
           <td class="product-name-cell">
             <div class="product-name-wrap">
               <span class="product-title">${p.name}</span>
+              ${p.isFabricCut ? '<span class="fabric-cut-badge">Vải khúc</span>' : ""}
               <span class="product-sku">${visibilityLabel}</span>
               ${p.sku ? `<span class="product-sku">SKU: ${p.sku}</span>` : ""}
             </div>
@@ -1674,7 +1687,10 @@ async function load() {
               <button onclick="updateStock(${p.id})">Cập nhật</button>
             </div>
           </td>
-          <td>${status}</td>
+          <td>
+            ${status}
+            <span class="purchase-limit-active-status" ${p.isPurchaseLimited ? "" : "hidden"}>Đang bật giới hạn</span>
+          </td>
           <td>
             <div class="action">
               <a class="product-link-btn" href="${getProductShopUrl(p)}" target="_blank" rel="noopener noreferrer" title="Mở link riêng sản phẩm">🔗</a>
@@ -1687,7 +1703,8 @@ async function load() {
       `;
     });
 
-    if (list) list.innerHTML = html || '<tr><td colspan="8">Không có sản phẩm</td></tr>';
+    if (list) list.innerHTML = html || '<tr><td colspan="9">Không có sản phẩm</td></tr>';
+    renderPurchaseLimitStatus();
     renderPagination("product-pagination", "products", totalItems, PRODUCT_PAGE_SIZE, (page) => {
       setPaginationPage("products", page);
       load();
@@ -1713,6 +1730,160 @@ async function load() {
 
 async function refreshDashboard() {
   await Promise.all([load(), loadOrders()]);
+}
+
+function getPurchaseLimitProducts() {
+  const search = (document.getElementById("search")?.value || "").toLowerCase();
+  return state.products.filter((product) => {
+    const haystack = `${product.name || ""} ${product.sku || ""}`.toLowerCase();
+    return product.isFabricCut && haystack.includes(search);
+  });
+}
+
+function selectAllPurchaseLimitProducts() {
+  if (purchaseLimitBusy || !purchaseLimitSettings) return;
+  const products = getPurchaseLimitProducts();
+  if (!products.length) {
+    showToast("Không có vải khúc trong danh sách đang lọc");
+    return;
+  }
+
+  const deselect = products.every((product) => purchaseLimitSelectedIds.has(Number(product.id)));
+  products.forEach((product) => {
+    if (deselect) purchaseLimitSelectedIds.delete(Number(product.id));
+    else purchaseLimitSelectedIds.add(Number(product.id));
+  });
+  savePurchaseLimit(false);
+}
+
+function updatePurchaseLimitSelectAllButton() {
+  const button = document.getElementById("purchase-limit-select-all");
+  if (!button) return;
+
+  const products = getPurchaseLimitProducts();
+  const allSelected = products.length > 0
+    && products.every((product) => purchaseLimitSelectedIds.has(Number(product.id)));
+  button.textContent = allSelected ? "Bỏ chọn tất cả" : "Chọn tất cả";
+  button.setAttribute("aria-pressed", String(allSelected));
+}
+
+function selectPurchaseLimitProduct(input) {
+  if (purchaseLimitBusy || !purchaseLimitSettings) return;
+  const id = Number(input.value);
+  if (!state.products.some((product) => Number(product.id) === id && product.isFabricCut)) {
+    input.checked = false;
+    showToast("Giới hạn chỉ áp dụng cho vải khúc");
+    return;
+  }
+
+  if (input.checked) purchaseLimitSelectedIds.add(id);
+  else purchaseLimitSelectedIds.delete(id);
+  savePurchaseLimit(false);
+}
+
+function renderPurchaseLimitStatus() {
+  document.querySelectorAll(".product-row").forEach((row) => {
+    const id = Number(row.dataset.productId);
+    const product = state.products.find((item) => Number(item.id) === id);
+    const active = product?.isFabricCut && (purchaseLimitSettings
+      ? purchaseLimitSettings.enabled && purchaseLimitSettings.productIds.includes(id)
+      : product.isPurchaseLimited);
+    const status = row.querySelector(".purchase-limit-active-status");
+    if (status) status.hidden = !active;
+  });
+  document.querySelectorAll(".purchase-limit-product-checkbox").forEach((input) => {
+    input.disabled = purchaseLimitBusy || !purchaseLimitSettings
+      || !state.products.some((product) => Number(product.id) === Number(input.value) && product.isFabricCut);
+    input.checked = purchaseLimitSelectedIds.has(Number(input.value));
+  });
+
+  const toggle = document.getElementById("purchase-limit-toggle");
+  const selectAll = document.getElementById("purchase-limit-select-all");
+  const status = document.getElementById("purchase-limit-status");
+  if (!toggle || !selectAll || !status) return;
+
+  toggle.disabled = purchaseLimitBusy || !purchaseLimitSettings
+    || (!purchaseLimitSettings.enabled && purchaseLimitSelectedIds.size === 0);
+  selectAll.disabled = purchaseLimitBusy || !purchaseLimitSettings;
+  updatePurchaseLimitSelectAllButton();
+  if (!purchaseLimitSettings) return;
+
+  toggle.setAttribute("aria-checked", String(purchaseLimitSettings.enabled));
+  toggle.textContent = purchaseLimitSettings.enabled ? "Tắt giới hạn" : "Bật giới hạn";
+  const selectedCount = document.createElement("strong");
+  selectedCount.className = "purchase-limit-selected-count";
+  selectedCount.textContent = `${purchaseLimitSettings.productIds.length} sản phẩm đã chọn`;
+  status.replaceChildren(selectedCount);
+}
+
+async function loadPurchaseLimitSettings() {
+  if (purchaseLimitBusy) return;
+  purchaseLimitBusy = true;
+  renderPurchaseLimitStatus();
+  try {
+    const settingsRes = await fetch(API + "/settings/purchase-limit");
+    const settingsResult = await readApiResponseSafely(settingsRes);
+    if (!settingsRes.ok) {
+      throw new Error(getApiErrorMessage(settingsRes, settingsResult.raw, settingsResult.data, "Không thể tải giới hạn mua", settingsResult.requestId));
+    }
+
+    const settings = settingsResult.data;
+    if (!settings || typeof settings.enabled !== "boolean" || !Array.isArray(settings.productIds)
+      || settings.productIds.some((id) => !Number.isSafeInteger(id) || id <= 0)
+      || typeof settings.roundId !== "string") {
+      throw new Error("Cấu hình giới hạn mua không hợp lệ");
+    }
+    purchaseLimitSettings = settings;
+    purchaseLimitSelectedIds = new Set(settings.productIds);
+  } catch (error) {
+    purchaseLimitSettings = null;
+    console.error("Không thể tải giới hạn mua:", error);
+    const status = document.getElementById("purchase-limit-status");
+    if (status) status.textContent = error.message;
+    showToast(error.message);
+  } finally {
+    purchaseLimitBusy = false;
+    renderPurchaseLimitStatus();
+  }
+}
+
+async function savePurchaseLimit(toggle) {
+  if (purchaseLimitBusy || !purchaseLimitSettings) return;
+  const productIds = [...purchaseLimitSelectedIds];
+  const enabled = toggle ? !purchaseLimitSettings.enabled : purchaseLimitSettings.enabled;
+  if (toggle && enabled && !productIds.length) {
+    purchaseLimitSelectedIds = new Set(purchaseLimitSettings.productIds);
+    renderPurchaseLimitStatus();
+    showToast("Vui lòng chọn ít nhất một sản phẩm trước khi bật");
+    return;
+  }
+
+  purchaseLimitBusy = true;
+  renderPurchaseLimitStatus();
+  try {
+    const res = await fetch(API + "/settings/purchase-limit", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled, productIds, roundId: purchaseLimitSettings.roundId })
+    });
+    const result = await readApiResponseSafely(res);
+    if (!res.ok) {
+      throw new Error(getApiErrorMessage(res, result.raw, result.data, "Không thể lưu giới hạn mua", result.requestId));
+    }
+
+    purchaseLimitSettings = result.data;
+    purchaseLimitSelectedIds = new Set(purchaseLimitSettings.productIds);
+    showToast(toggle && !enabled
+      ? "Đã tắt giới hạn và bỏ chọn tất cả sản phẩm"
+      : "Đã lưu cấu hình giới hạn mua");
+  } catch (error) {
+    console.error("Không thể lưu giới hạn mua:", error);
+    purchaseLimitSelectedIds = new Set(purchaseLimitSettings.productIds);
+    showToast(error.message);
+  } finally {
+    purchaseLimitBusy = false;
+    renderPurchaseLimitStatus();
+  }
 }
 
 async function uploadImage(file) {
@@ -1965,7 +2136,7 @@ async function saveProduct() {
 
     showToast(isEditing ? "Đã cập nhật sản phẩm" : "Đã thêm sản phẩm");
     closeModal();
-    await load();
+    await Promise.all([load(), loadPurchaseLimitSettings()]);
     loadOrders();
   } catch (error) {
     console.error(error);
@@ -2198,7 +2369,7 @@ async function deleteProduct(id) {
     }
 
     showToast("Đã xóa sản phẩm");
-    await refreshDashboard();
+    await Promise.all([refreshDashboard(), loadPurchaseLimitSettings()]);
   } catch (error) {
     console.error(error);
     showToast("Lỗi khi xóa sản phẩm");
@@ -2326,7 +2497,7 @@ syncCategoryUi();
 
 loadBrandSettings();
 refreshDashboard();
+loadPurchaseLimitSettings();
 setInterval(() => {
   loadOrders();
 }, 5000);
-

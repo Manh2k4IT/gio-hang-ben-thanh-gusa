@@ -168,6 +168,15 @@
 
                 <!-- Toolbar -->
 
+                <section class="card purchase-limit-panel">
+                    <h2>Giới hạn mua 1 khúc</h2>
+                    <p id="purchase-limit-status" role="status" aria-live="polite">Đang tải cấu hình...</p>
+                    <div class="purchase-limit-actions">
+                        <button type="button" id="purchase-limit-select-all" class="brand-logo-btn" disabled onclick="selectAllPurchaseLimitProducts()">Chọn tất cả</button>
+                        <button type="button" id="purchase-limit-toggle" class="btn-add" role="switch" aria-checked="false" disabled onclick="savePurchaseLimit(true)">Bật giới hạn</button>
+                    </div>
+                </section>
+
                 <section class="card toolbar">
 
                     <input
@@ -195,6 +204,8 @@
                             <tr>
 
                                 <th>Kéo</th>
+
+                                <th>Áp dụng giới hạn</th>
 
                                 <th>Ảnh</th>
 
@@ -686,7 +697,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
-<script src="js/admin.js?v=20260718f"></script>
+<script src="js/admin.js?v=20261007a"></script>
 
 </body>
 
