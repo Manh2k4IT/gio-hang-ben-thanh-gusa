@@ -2529,6 +2529,20 @@
       openCartPopup();
     }
 
+    async function recordProductOrderPopupOpen(productId) {
+      try {
+        const response = await fetch(`${API}/traffic/product-order-popup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ productId }),
+          keepalive: true
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      } catch (error) {
+        console.error("Không thể ghi nhận lượt mở popup đặt hàng:", error);
+      }
+    }
+
     function openCartPopup() {
       const popup = document.getElementById("cartPopup");
       if (!popup) return;
@@ -2558,6 +2572,7 @@
         cartPopupHistoryActive = true;
       }
       if (quickOrderMode) {
+        recordProductOrderPopupOpen(quickOrderState.productId);
         renderQuickOrderPopup();
       } else {
         renderCartPopup(false);

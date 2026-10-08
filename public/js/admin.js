@@ -1714,7 +1714,7 @@ async function loadTrafficInsights() {
       const row = document.createElement("tr");
       const cell = document.createElement("td");
       cell.colSpan = 5;
-      cell.textContent = "Chưa có lượt xem sản phẩm trong khoảng thời gian này.";
+      cell.textContent = "Chưa có lượt mở popup đặt hàng trong khoảng thời gian này.";
       row.appendChild(cell);
       productClicksList.appendChild(row);
     } else {

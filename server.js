@@ -341,14 +341,6 @@ app.get("/shop.html", (req, res, next) => {
         return next();
     }
 
-    const product = findProductById(productId);
-    const isAutomated = /bot|crawler|spider|facebookexternalhit|preview/i.test(String(req.headers["user-agent"] || ""))
-        || /prefetch|prerender/i.test(String(req.headers["purpose"] || req.headers["sec-purpose"] || ""));
-    if (req.method === "GET" && product && !isHiddenInTotal(product) && !isAutomated) {
-        recordProductClick(trafficAnalytics, product);
-        schedulePersistState();
-    }
-
     const html = injectShareMetaToShopHtml(template, meta);
     setNoCacheHeaders(res);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -787,7 +779,8 @@ function getOrderDayKey(value) {
 }
 
 function mapOrderItemSnapshot(item) {
-    const cutLengthValue = Number(item?.variantCutLength ?? item?.cutLength);
+    const legacyLength = String(item?.variantName || "").match(/\((\d+(?:[.,]\d+)?)\s*m\)\s*$/i);
+    const cutLengthValue = Number(item?.variantCutLength ?? item?.cutLength ?? (legacyLength ? legacyLength[1].replace(",", ".") : null));
     return {
         name: normalizeTextValue(item?.name, "Sản phẩm"),
         qty: normalizeCartQuantity(item?.qty, 1),
@@ -795,7 +788,7 @@ function mapOrderItemSnapshot(item) {
         category: normalizeTextValue(item?.category, ""),
         variantName: normalizeTextValue(item?.variantName, ""),
         size: normalizeTextValue(item?.selectedSize || item?.size, ""),
-        isFabricCut: normalizeBooleanFlag(item?.isFabricCut, false),
+        isFabricCut: normalizeBooleanFlag(item?.isFabricCut, cutLengthValue > 0),
         variantCutLength: Number.isFinite(cutLengthValue) && cutLengthValue > 0 ? Math.round(cutLengthValue * 100) / 100 : null
     };
 }
@@ -805,7 +798,7 @@ function mergeOrderItems(existingItems, incomingItems) {
 
     const addItem = (rawItem) => {
         const item = mapOrderItemSnapshot(rawItem);
-        const key = [item.sku, item.name, item.category, item.variantName, item.size]
+        const key = [item.sku, item.name, item.category, item.variantName, item.size, item.isFabricCut, item.variantCutLength]
             .map((value) => String(value || "").toLowerCase().trim())
             .join("||");
 
@@ -927,7 +920,11 @@ function normalizeProductOrder() {
         product.oldPrice = normalizeOptionalOldPrice(product.oldPrice, null);
         product.stock = normalizeStockValue(product.stock, 0);
         product.image = normalizeTextValue(product.image, "");
-        product.isFabricCut = normalizeBooleanFlag(product.isFabricCut, false);
+        const legacyCutLengths = Array.isArray(product.variantCutLengths) ? product.variantCutLengths : [];
+        const legacyNames = Array.isArray(product.variantNames) ? product.variantNames : [];
+        const wasSoldByCut = legacyCutLengths.some((length) => Number(length) > 0)
+            || legacyNames.some((name) => /\(\s*\d+(?:[.,]\d+)?\s*m\s*\)\s*$/i.test(String(name)));
+        product.isFabricCut = normalizeBooleanFlag(product.isFabricCut, wasSoldByCut);
 
         if (!Number.isFinite(Number(product.sortOrder))) {
 
@@ -2381,6 +2378,24 @@ app.post("/traffic/visit", writeLimiter, (req, res) => {
         schedulePersistState();
     }
     res.json({ counted: !excluded });
+});
+
+app.post("/traffic/product-order-popup", writeLimiter, (req, res) => {
+    const { productId } = req.body || {};
+    if (!Number.isSafeInteger(productId) || productId <= 0) {
+        return res.status(400).json({ error: "Mã sản phẩm không hợp lệ", requestId: req.requestId });
+    }
+
+    const product = findProductById(productId);
+    const isAutomated = /bot|crawler|spider|facebookexternalhit|preview/i.test(String(req.headers["user-agent"] || ""))
+        || /prefetch|prerender/i.test(String(req.headers["purpose"] || req.headers["sec-purpose"] || ""));
+    if (!product || isHiddenInTotal(product) || isAutomated) {
+        return res.json({ counted: false });
+    }
+
+    recordProductClick(trafficAnalytics, product);
+    schedulePersistState();
+    res.json({ counted: true });
 });
 
 app.get("/traffic-insights", (req, res) => {
