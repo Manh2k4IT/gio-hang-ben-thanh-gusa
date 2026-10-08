@@ -753,7 +753,7 @@ const DEFAULT_SETTINGS = {
         "LINEN TƠ MÀU",
         "LINEN ƯỚT",
         "LINEN BỐ SỚ XÉO",
-        "LINEN TẰM GÂN THÊU",
+        "LINEN TẰM GÂN",
         "Linen bột",
         "Tơ gân",
         "Cotton",
@@ -961,7 +961,7 @@ function normalizeProductOrder() {
 
         }
 
-        product.category = normalizeTextValue(product.category, "Khác");
+        product.category = normalizeCategoryLabel(product.category || "Khác");
 
         const normalizedImages = normalizeImageList(product.images || product.image);
         product.images = normalizedImages;
@@ -1235,6 +1235,7 @@ function normalizeCategoryName(value) {
     if (key === "chan vay" || key === "chanvay") return "Chân váy";
     if (key === "dam") return "Đầm";
     if (key === "khac") return "Khác";
+    if (key === "linen tam gan" || key === "linen tam gan theu") return "LINEN TẰM GÂN";
 
     return category;
 
@@ -1929,7 +1930,8 @@ function getProductCategory(product) {
 
 function normalizeCategoryLabel(value) {
 
-    return normalizeTextValue(value, "").replace(/\s+/g, " ").trim();
+    const label = normalizeTextValue(value, "").replace(/\s+/g, " ").trim();
+    return normalizeCategoryName(label);
 
 }
 
@@ -3284,7 +3286,7 @@ app.put("/product/:id", (req, res) => {
     rebuildProductsIndex();
 
     if (category !== undefined) {
-        const nextCategory = normalizeTextValue(category, "Khác");
+        const nextCategory = normalizeCategoryLabel(category || "Khác");
         product.category = nextCategory;
 
         if (normalizeCategoryName(nextCategory) !== normalizeCategoryName(oldCategory)) {

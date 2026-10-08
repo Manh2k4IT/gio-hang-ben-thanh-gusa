@@ -44,7 +44,7 @@ const FIXED_PRODUCT_CATEGORIES = [
   "LINEN TƠ MÀU",
   "LINEN ƯỚT",
   "LINEN BỐ SỚ XÉO",
-  "LINEN TẰM GÂN THÊU",
+  "LINEN TẰM GÂN",
   "Linen bột",
   "Tơ gân",
   "Cotton"
@@ -74,6 +74,7 @@ const paginationState = {
 
 function normalizeCategoryLabel(value) {
   const next = String(value || "").trim().replace(/\s+/g, " ");
+  if (normalizeCategoryKey(next) === "linen tam gan theu") return "LINEN TẰM GÂN";
   return next;
 }
 
@@ -743,11 +744,12 @@ function getAdminCategory() {
 }
 
 function normalizeCategoryKey(value) {
-  return String(value || "")
+  const key = String(value || "")
     .trim()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
+  return key === "linen tam gan theu" ? "linen tam gan" : key;
 }
 
 function getShopCategoryUrl(category) {
@@ -1887,7 +1889,10 @@ async function load() {
     const outStock = document.getElementById("outStock");
 
     if (totalProduct) totalProduct.textContent = categoryScopedData.length;
-    if (totalStock) totalStock.textContent = categoryScopedData.reduce((sum, p) => sum + Number(p.stock || 0), 0);
+    if (totalStock) {
+      const stockTotal = categoryScopedData.reduce((sum, product) => sum + Number(product.stock || 0), 0);
+      totalStock.textContent = Number(stockTotal.toFixed(2)).toLocaleString("vi-VN");
+    }
     if (lowStock) lowStock.textContent = categoryScopedData.filter((p) => p.stock > 0 && p.stock <= 3).length;
     if (outStock) outStock.textContent = categoryScopedData.filter((p) => Number(p.stock || 0) <= 0).length;
   } catch (error) {
