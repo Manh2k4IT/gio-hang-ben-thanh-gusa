@@ -1510,7 +1510,6 @@ td img{
 .order-customer-top{
     display:flex;
     align-items:center;
-    justify-content:space-between;
     gap:10px;
     margin-bottom:8px;
 }
@@ -1521,38 +1520,47 @@ td img{
     color:#0f172a;
 }
 
-.order-sku-chip{
-    display:inline-flex;
-    align-items:center;
-    padding:5px 10px;
-    border-radius:999px;
-    background:#ecfeff;
-    color:#0f766e;
-    font-size:12px;
-    font-weight:700;
-    max-width:230px;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-}
-
 .order-items-wrap{
     display:flex;
-    flex-wrap:wrap;
+    flex-direction:column;
     gap:6px;
 }
 
 .order-item-pill{
     display:inline-flex;
     align-items:center;
+    align-self:flex-start;
+    gap:8px;
     padding:5px 9px;
-    border-radius:999px;
+    border-radius:12px;
     background:#f8fafc;
     border:1px solid #e2e8f0;
     color:#334155;
     font-size:12px;
     font-weight:600;
     line-height:1.25;
+}
+
+.order-item-pill img{
+    width:48px;
+    height:48px;
+    flex:0 0 48px;
+    border-radius:8px;
+    object-fit:cover;
+    background:#e2e8f0;
+}
+
+.order-item-copy{
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+    min-width:0;
+}
+
+.order-item-copy small{
+    color:#0f766e;
+    font-size:10px;
+    font-weight:700;
 }
 
 .order-phone-cell,

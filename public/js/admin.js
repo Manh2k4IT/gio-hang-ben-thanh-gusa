@@ -2439,6 +2439,28 @@ async function loadOrders() {
     renderCustomerDataView();
     renderProductInsightsView();
 
+    let orderProducts = state.products;
+    const orderSkus = new Set(data.flatMap((order) => (Array.isArray(order.items) ? order.items : [])
+      .map((item) => String(item.sku || "").trim().toLowerCase())
+      .filter(Boolean)));
+    const knownProductSkus = new Set(orderProducts.map((product) => String(product.sku || "").trim().toLowerCase()));
+    if ([...orderSkus].some((sku) => !knownProductSkus.has(sku))) {
+      try {
+        const productsRes = await fetch(API + "/products/all");
+        const { raw: productsRaw, data: productsData, requestId: productsRequestId } = await readApiResponseSafely(productsRes);
+        if (!productsRes.ok) {
+          throw new Error(getApiErrorMessage(productsRes, productsRaw, productsData, "Không thể tải ảnh sản phẩm cho đơn hàng", productsRequestId));
+        }
+        orderProducts = Array.isArray(productsData) ? productsData : [];
+      } catch (error) {
+        console.error("Không thể tải ảnh sản phẩm cho đơn hàng:", error);
+        showToast(error.message || "Không thể tải ảnh sản phẩm cho đơn hàng");
+      }
+    }
+    const productsBySku = new Map(orderProducts
+      .filter((product) => String(product.sku || "").trim())
+      .map((product) => [String(product.sku).trim().toLowerCase(), product]));
+
     const list = document.getElementById("order-list");
     const search = (document.getElementById("order-search")?.value || "").toLowerCase();
     const totalOrders = document.getElementById("totalOrders");
@@ -2471,20 +2493,31 @@ async function loadOrders() {
 
         const items = Array.isArray(order.items) ? order.items : [];
         const itemSummary = items.map((item) => {
+          const sku = String(item.sku || "").trim();
+          const product = sku ? productsBySku.get(sku.toLowerCase()) : null;
+          const productImages = Array.isArray(product?.images)
+            ? product.images
+            : (typeof product?.images === "string" ? product.images.split(/[,\n|]+/) : []);
+          const productVariantNames = Array.isArray(product?.variantNames) ? product.variantNames : [];
+          const variantIndex = productVariantNames.findIndex((name) =>
+            String(name || "").trim().toLowerCase() === String(item.variantName || "").trim().toLowerCase());
+          const image = String(item.image || productImages[variantIndex >= 0 ? variantIndex : 0] || product?.image || "").trim();
           const variantPart = item.variantName ? ` (${item.variantName}${item.size ? ` - ${item.size}` : ""})` : (item.size ? ` (${item.size})` : "");
-          return `<span class="order-item-pill">${item.name}${variantPart} x${formatOrderItemQtyLabel(item)}</span>`;
+          return `
+            <span class="order-item-pill">
+              ${image ? `<img src="${image}" alt="${item.variantName || item.name || "Sản phẩm"}" loading="lazy" decoding="async">` : ""}
+              <span class="order-item-copy">
+                <span>${item.name}${variantPart} x${formatOrderItemQtyLabel(item)}</span>
+                ${sku ? `<small>SKU: ${sku}</small>` : ""}
+              </span>
+            </span>`;
         }).join("");
-
-        const skuSummary = [...new Set(items
-          .map((item) => String(item.sku || "").trim())
-          .filter(Boolean))].join(" • ") || "Chưa có SKU";
 
         return `
           <tr>
             <td class="order-customer-cell">
               <div class="order-customer-top">
                 <span class="order-customer-name">${order.customer || "Khách lẻ"}</span>
-                <span class="order-sku-chip">SKU: ${skuSummary}</span>
               </div>
               <div class="order-items-wrap">${itemSummary || '<span class="order-item-pill">Không có sản phẩm</span>'}</div>
             </td>
