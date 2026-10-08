@@ -610,6 +610,12 @@ td img{
     background:#006b50;
 }
 
+.product-stock-value{
+    font-size:20px;
+    font-weight:700;
+    color:#0f172a;
+}
+
 /* ===========================
    STATUS
 =========================== */

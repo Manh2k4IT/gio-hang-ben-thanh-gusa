@@ -1855,10 +1855,7 @@ async function load() {
             </div>
           </td>
           <td>
-            <div class="stock-inline">
-              <input type="number" min="0" step="0.01" value="${p.stock}" id="stock-${p.id}" />
-              <button onclick="updateStock(${p.id})">Cập nhật</button>
-            </div>
+            <span class="product-stock-value">${Number(p.stock || 0).toLocaleString("vi-VN")} mét</span>
           </td>
           <td>
             ${status}
