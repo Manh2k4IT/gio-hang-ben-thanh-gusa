@@ -325,6 +325,23 @@ function injectShareMetaToShopHtml(template, meta) {
     return `${template.slice(0, headCloseIndex)}\n${ogBlock}\n${template.slice(headCloseIndex)}`;
 }
 
+app.use((req, res, next) => {
+    if (req.method === "GET" && req.path === "/shop.html"
+        && !/bot|crawler|spider|facebookexternalhit|preview/i.test(String(req.headers["user-agent"] || ""))
+        && !/prefetch|prerender/i.test(String(req.headers["purpose"] || req.headers["sec-purpose"] || ""))) {
+        res.on("finish", () => {
+            if (res.statusCode !== 200 || !String(res.getHeader("Content-Type") || "").includes("text/html")) return;
+            const productId = Number(req.query.productId);
+            const product = Number.isSafeInteger(productId) && productId > 0 ? findProductById(productId) : null;
+            if (product && !isHiddenInTotal(product)) {
+                recordProductClick(trafficAnalytics, product);
+                schedulePersistState();
+            }
+        });
+    }
+    next();
+});
+
 app.get("/shop.html", (req, res, next) => {
     const productId = Number(req.query?.productId);
     if (!Number.isFinite(productId) || productId <= 0) {
@@ -2378,24 +2395,6 @@ app.post("/traffic/visit", writeLimiter, (req, res) => {
         schedulePersistState();
     }
     res.json({ counted: !excluded });
-});
-
-app.post("/traffic/product-order-popup", writeLimiter, (req, res) => {
-    const { productId } = req.body || {};
-    if (!Number.isSafeInteger(productId) || productId <= 0) {
-        return res.status(400).json({ error: "Mã sản phẩm không hợp lệ", requestId: req.requestId });
-    }
-
-    const product = findProductById(productId);
-    const isAutomated = /bot|crawler|spider|facebookexternalhit|preview/i.test(String(req.headers["user-agent"] || ""))
-        || /prefetch|prerender/i.test(String(req.headers["purpose"] || req.headers["sec-purpose"] || ""));
-    if (!product || isHiddenInTotal(product) || isAutomated) {
-        return res.json({ counted: false });
-    }
-
-    recordProductClick(trafficAnalytics, product);
-    schedulePersistState();
-    res.json({ counted: true });
 });
 
 app.get("/traffic-insights", (req, res) => {

@@ -2422,10 +2422,12 @@
         return `
           <div class="product-card">
             <div class="product-image-wrap">
-              <img class="product-main-image" src="${getSelectedImageForProduct(p.id) || p.image || "https://placehold.co/300x220?text=No+Image"}" alt="${p.name}" loading="lazy" decoding="async" />
+              <a href="/shop.html?productId=${encodeURIComponent(String(p.id))}" aria-label="Xem sản phẩm ${p.name}">
+                <img class="product-main-image" src="${getSelectedImageForProduct(p.id) || p.image || "https://placehold.co/300x220?text=No+Image"}" alt="${p.name}" loading="lazy" decoding="async" />
+              </a>
               <button class="category-cart-btn" onclick="openCategoryPage('${productCategory.replace(/'/g, "\\'")}')">${productCategory}</button>
             </div>
-            <div class="product-name">${p.name}</div>
+            <div class="product-name"><a href="/shop.html?productId=${encodeURIComponent(String(p.id))}" style="color:inherit;text-decoration:none">${p.name}</a></div>
             ${renderPurchaseLimitOfferNote(p)}
             <div class="product-meta product-sku">SKU: ${p.sku || "—"}</div>
             <div class="product-meta product-stock">Tồn kho: ${formatVariantStockDisplay(p, getPreferredInStockVariantIndex(p, Number(p.id)), Number(p.stock || 0))}</div>
@@ -2529,20 +2531,6 @@
       openCartPopup();
     }
 
-    async function recordProductOrderPopupOpen(productId) {
-      try {
-        const response = await fetch(`${API}/traffic/product-order-popup`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ productId }),
-          keepalive: true
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      } catch (error) {
-        console.error("Không thể ghi nhận lượt mở popup đặt hàng:", error);
-      }
-    }
-
     function openCartPopup() {
       const popup = document.getElementById("cartPopup");
       if (!popup) return;
@@ -2572,7 +2560,6 @@
         cartPopupHistoryActive = true;
       }
       if (quickOrderMode) {
-        recordProductOrderPopupOpen(quickOrderState.productId);
         renderQuickOrderPopup();
       } else {
         renderCartPopup(false);
