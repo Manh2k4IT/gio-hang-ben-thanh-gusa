@@ -159,7 +159,8 @@ function renderCategoryNav() {
   const groupedLinks = grouped.map((group) => {
     const childrenLinks = group.children.map((child) => {
       const href = `/admin.html?category=${encodeURIComponent(child)}`;
-      return `<a class="nav-submenu-link" data-category="${child.replace(/"/g, "&quot;")}" href="${href}">${child}</a>`;
+      const label = child.startsWith(`${group.parent} `) ? child.slice(group.parent.length + 1) : child;
+      return `<a class="nav-submenu-link" data-category="${child.replace(/"/g, "&quot;")}" aria-label="${child.replace(/"/g, "&quot;")}" title="${child.replace(/"/g, "&quot;")}" href="${href}">${label}</a>`;
     }).join("");
 
     return `
@@ -175,7 +176,7 @@ function renderCategoryNav() {
     return `<a class="nav-submenu-link" data-category="${category.replace(/"/g, "&quot;")}" href="${href}">${category}</a>`;
   }).join("");
 
-  container.innerHTML = `${groupedLinks}${remainingLinks}<a class="nav-submenu-link" data-category="" href="/admin.html">Tất cả</a>`;
+  container.innerHTML = `<a class="nav-submenu-link nav-submenu-all" data-category="" href="/admin.html">Tất cả sản phẩm</a>${groupedLinks}${remainingLinks}`;
 }
 
 function syncCategoryUi() {
@@ -1672,10 +1673,8 @@ async function loadTrafficInsights() {
   status.hidden = false;
   status.textContent = "Đang tải thống kê...";
   const totalViews = document.getElementById("trafficTotalViews");
-  const uniqueVisitors = document.getElementById("trafficUniqueVisitors");
   const totalOrders = document.getElementById("trafficTotalOrders");
-  const averageViews = document.getElementById("trafficAverageViews");
-  [totalViews, uniqueVisitors, totalOrders, averageViews].forEach((element) => {
+  [totalViews, totalOrders].forEach((element) => {
     element.textContent = "—";
   });
   const productClicksList = document.getElementById("traffic-product-clicks-list");
@@ -1709,9 +1708,7 @@ async function loadTrafficInsights() {
 
     const numbers = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 });
     totalViews.textContent = numbers.format(data.totalViews);
-    uniqueVisitors.textContent = numbers.format(data.uniqueVisitors);
     totalOrders.textContent = numbers.format(data.totalOrders);
-    averageViews.textContent = numbers.format(data.averageDailyViews);
 
     if (data.topProductClicks.length === 0) {
       const row = document.createElement("tr");
@@ -1812,10 +1809,7 @@ async function load() {
       shopLink.textContent = category ? `🛒 Giỏ hàng ${category}` : "🛒 Xem giỏ hàng";
     }
 
-    const filtered = categoryScopedData.filter((p) => {
-      const haystack = `${p.name || ""} ${p.sku || ""}`.toLowerCase();
-      return haystack.includes(search);
-    });
+    const filtered = filterAdminProducts(categoryScopedData, search);
     updatePurchaseLimitSelectAllButton();
 
     const totalItems = filtered.length;
@@ -1911,12 +1905,34 @@ async function refreshDashboard() {
   await Promise.all([load(), loadOrders()]);
 }
 
+let productStockFilter = "available";
+
+function setProductStockFilter(filter) {
+  if (!["available", "empty", "all"].includes(filter)) {
+    showToast("Bộ lọc tồn kho không hợp lệ");
+    return;
+  }
+  productStockFilter = filter;
+  paginationState.products = 1;
+  document.querySelectorAll("[data-stock-filter]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.stockFilter === filter));
+  });
+  load();
+}
+window.setProductStockFilter = setProductStockFilter;
+
+function filterAdminProducts(products, search) {
+  return products.filter((product) => {
+    const stock = Number(product.stock);
+    const matchesStock = productStockFilter === "all"
+      || (productStockFilter === "available" ? stock > 0 : stock <= 0);
+    return matchesStock && `${product.name || ""} ${product.sku || ""}`.toLowerCase().includes(search);
+  });
+}
+
 function getPurchaseLimitProducts() {
   const search = (document.getElementById("search")?.value || "").toLowerCase();
-  return state.products.filter((product) => {
-    const haystack = `${product.name || ""} ${product.sku || ""}`.toLowerCase();
-    return product.isFabricCut && haystack.includes(search);
-  });
+  return filterAdminProducts(state.products, search).filter((product) => product.isFabricCut);
 }
 
 function selectAllPurchaseLimitProducts() {
@@ -2597,8 +2613,8 @@ function setupProductDragAndDrop() {
     dragClass: "drag-dragging",
     onEnd: async () => {
       const searchValue = (document.getElementById("search")?.value || "").trim();
-      if (searchValue) {
-        showToast("Hãy xóa từ khóa tìm kiếm trước khi sắp xếp");
+      if (searchValue || productStockFilter !== "all") {
+        showToast("Hãy chọn Tất cả và xóa từ khóa tìm kiếm trước khi sắp xếp");
         await refreshDashboard();
         return;
       }

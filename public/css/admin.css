@@ -2435,3 +2435,277 @@ html{
     accent-color:#2563eb;
 
 }
+
+/* Match the inventory, analytics, and navigation layout used in Quận 4. */
+.sidebar{
+    flex-basis:284px;
+    width:284px;
+    background:linear-gradient(180deg,#111827,#172033);
+}
+
+.brand{
+    margin-bottom:14px;
+    padding:12px 10px 14px;
+    border:0;
+    border-bottom:1px solid rgba(255,255,255,.1);
+    border-radius:0;
+    background:transparent;
+}
+
+.sidebar .brand-title img{
+    width:110px;
+    height:64px;
+    max-height:64px;
+    padding:0;
+    border-radius:20px;
+    background:#fff;
+}
+
+.brand-title h2{
+    font-size:20px;
+}
+
+.brand > p{
+    margin-top:8px;
+    color:#aeb9ca;
+    font-size:13px;
+}
+
+.brand-logo-actions{
+    margin-top:8px;
+}
+
+.admin-logout-btn{
+    margin-top:8px;
+    border-color:rgba(248,113,113,.35);
+    background:rgba(239,68,68,.1);
+    color:#fca5a5;
+}
+
+.admin-logout-btn:hover{
+    background:rgba(239,68,68,.2);
+    color:#fff;
+}
+
+.nav-menu{
+    gap:8px;
+}
+
+.nav-menu > .nav-btn{
+    min-height:44px;
+    padding:12px;
+    border-radius:10px;
+    font-size:14px;
+}
+
+.nav-menu > .nav-btn.active,
+.nav-menu > .nav-btn.active:hover{
+    background:#008060;
+    box-shadow:none;
+}
+
+.nav-menu > .nav-submenu{
+    gap:8px;
+    margin:0 0 8px;
+    padding:14px 10px;
+    border:0;
+    border-top:1px solid rgba(255,255,255,.08);
+    border-bottom:1px solid rgba(255,255,255,.08);
+    border-radius:0;
+    background:transparent;
+}
+
+.nav-menu > .nav-submenu .nav-submenu-title{
+    padding:0 2px;
+    color:#9ca3af;
+    font-size:12px;
+    font-weight:500;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+}
+
+.nav-menu > .nav-submenu .nav-submenu-title::after{
+    content:none;
+}
+
+#categoryNavLinks{
+    max-height:none;
+    overflow:visible;
+    padding:0;
+}
+
+.nav-submenu-all{
+    margin-bottom:2px;
+    color:#a7f3d0;
+    font-weight:700;
+}
+
+.nav-submenu-group{
+    gap:8px;
+    margin:10px 0;
+}
+
+.nav-submenu-parent{
+    padding:0 4px;
+    color:#94a3b8;
+}
+
+.nav-submenu-children{
+    gap:4px;
+    margin-left:0;
+    padding-left:10px;
+    border-left:1px solid rgba(148,163,184,.2);
+}
+
+.nav-submenu-link,
+.nav-submenu-children .nav-submenu-link{
+    padding:10px 12px;
+    border-radius:9px;
+    background:transparent;
+    color:#cbd5e1;
+    font-size:14px;
+    line-height:1.4;
+}
+
+.nav-submenu-children .nav-submenu-link{
+    font-size:14px;
+}
+
+.nav-submenu-link:hover,
+.nav-submenu-children .nav-submenu-link:hover{
+    background:rgba(255,255,255,.06);
+    color:#fff;
+}
+
+.nav-submenu-link.active,
+.nav-submenu-children .nav-submenu-link.active{
+    background:rgba(16,185,129,.16);
+    color:#a7f3d0;
+    font-weight:700;
+    box-shadow:inset 3px 0 0 #34d399;
+}
+
+.nav-menu > .nav-submenu + .nav-btn{
+    margin-top:2px;
+}
+
+.product-toolbar{
+    justify-content:space-between;
+    align-items:center;
+    gap:16px;
+    padding:24px;
+}
+
+.product-stock-filter{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    padding:5px;
+    border-radius:12px;
+    background:#f1f5f9;
+}
+
+.product-stock-filter button{
+    padding:10px 16px;
+    border-radius:9px;
+    background:transparent;
+    color:#475569;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+}
+
+.product-stock-filter button[aria-pressed="true"]{
+    background:#008060;
+    color:#fff;
+}
+
+.product-stock-filter button:focus-visible{
+    outline:2px solid #008060;
+    outline-offset:2px;
+}
+
+.product-toolbar input{
+    width:min(320px,100%);
+    height:46px;
+    border:1px solid #d5dbe4;
+    border-radius:11px;
+    padding:0 16px;
+    font-size:15px;
+}
+
+.product-toolbar input:focus{
+    outline:none;
+    border-color:#008060;
+    box-shadow:0 0 0 3px rgba(0,128,96,.12);
+}
+
+.traffic-dashboard{
+    grid-template-columns:repeat(2,minmax(0,308px));
+    justify-content:start;
+}
+
+#traffic-insights-filter input{
+    flex:0 1 auto;
+    width:180px;
+    height:44px;
+    min-width:150px;
+}
+
+.traffic-insights-status:not([hidden]){
+    margin-top:-8px;
+}
+
+@media(max-width:768px){
+    .sidebar{
+        flex-basis:auto;
+        width:100%;
+    }
+
+    .sidebar .brand-title img{
+        width:84px;
+        height:54px;
+        max-height:54px;
+    }
+
+    .product-toolbar{
+        align-items:stretch;
+        padding:14px;
+    }
+
+    .product-stock-filter{
+        width:max-content;
+        max-width:100%;
+    }
+
+    .product-stock-filter button{
+        padding:9px 12px;
+        font-size:13px;
+    }
+
+    .product-toolbar input{
+        width:100%;
+    }
+
+    .traffic-dashboard{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+
+    #traffic-insights-filter input{
+        width:100%;
+        min-width:0;
+    }
+}
+
+@media(max-width:420px){
+    .product-stock-filter{
+        width:100%;
+        justify-content:space-between;
+    }
+
+    .product-stock-filter button{
+        flex:1;
+        padding-right:6px;
+        padding-left:6px;
+    }
+}
