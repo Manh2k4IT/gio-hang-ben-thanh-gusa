@@ -2248,6 +2248,36 @@ td img{
     object-fit:cover;
 }
 
+html{
+    scrollbar-width:thin;
+    scrollbar-color:rgba(125,170,159,.72) transparent;
+}
+
+*::-webkit-scrollbar{
+    width:6px;
+    height:6px;
+}
+
+*::-webkit-scrollbar-track{
+    background:transparent;
+}
+
+*::-webkit-scrollbar-thumb{
+    border:1px solid transparent;
+    border-radius:999px;
+    background:rgba(125,170,159,.6);
+    background-clip:padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover{
+    background:rgba(110,231,183,.82);
+    background-clip:padding-box;
+}
+
+*::-webkit-scrollbar-corner{
+    background:transparent;
+}
+
 @media(max-width:768px){
     .sidebar{
         position:sticky;
