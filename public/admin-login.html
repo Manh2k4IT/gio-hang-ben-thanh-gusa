@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Đăng nhập quản trị | Giỏ hàng Gusa Bến Thành</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            display: grid;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            place-items: center;
+            background: radial-gradient(circle at top left, #d1fae5 0, transparent 36%), #f1f5f9;
+            color: #0f172a;
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+        main {
+            width: min(100%, 430px);
+            padding: 34px;
+            border: 1px solid #e2e8f0;
+            border-radius: 22px;
+            background: #fff;
+            box-shadow: 0 24px 70px rgba(15, 23, 42, .12);
+        }
+        .brand { margin-bottom: 26px; text-align: center; }
+        .brand img { width: 62px; height: 62px; object-fit: contain; }
+        h1 { margin: 10px 0 8px; font-size: 25px; }
+        .subtitle { margin: 0; color: #64748b; line-height: 1.6; }
+        label { display: block; margin: 18px 0 7px; font-size: 14px; font-weight: 700; }
+        input {
+            width: 100%;
+            min-height: 48px;
+            padding: 11px 13px;
+            border: 1px solid #cbd5e1;
+            border-radius: 11px;
+            background: #fff;
+            color: #0f172a;
+            font: inherit;
+        }
+        input:focus { border-color: #059669; outline: 3px solid #a7f3d0; }
+        button {
+            width: 100%;
+            min-height: 49px;
+            margin-top: 23px;
+            border: 0;
+            border-radius: 11px;
+            background: #047857;
+            color: #fff;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        button:hover { background: #065f46; }
+        button:disabled { opacity: .62; cursor: wait; }
+        #login-error {
+            margin: 15px 0 0;
+            padding: 11px 12px;
+            border-radius: 10px;
+            background: #fef2f2;
+            color: #b91c1c;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        #login-error[hidden] { display: none; }
+        .back { margin: 22px 0 0; text-align: center; }
+        a { color: #047857; font-weight: 700; }
+        @media (max-width: 480px) { main { padding: 25px 21px; } }
+    </style>
+</head>
+<body>
+    <main>
+        <div class="brand">
+            <img src="/assets/default-logo.svg" alt="Gusa">
+            <h1>Đăng nhập quản trị</h1>
+            <p class="subtitle">Giỏ hàng kho vải Gusa Bến Thành</p>
+        </div>
+        <form id="admin-login-form">
+            <label for="email">Email quản trị</label>
+            <input id="email" type="email" autocomplete="username" required>
+            <label for="password">Mật khẩu</label>
+            <input id="password" type="password" autocomplete="current-password" maxlength="256" required>
+            <p id="login-error" role="alert" hidden></p>
+            <button id="login-submit" type="submit">Đăng nhập</button>
+        </form>
+        <p class="back"><a href="/shop.html">Về cửa hàng</a></p>
+    </main>
+    <script src="/js/admin-login.js?v=20261007b"></script>
+</body>
+</html>

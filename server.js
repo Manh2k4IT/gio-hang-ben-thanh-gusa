@@ -8,6 +8,16 @@ const { rateLimit } = require("express-rate-limit");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
+const envFile = path.join(__dirname, ".env");
+if (typeof process.loadEnvFile === "function" && fs.existsSync(envFile)) process.loadEnvFile(envFile);
+const { installAdminAuth } = require("./admin-auth");
+const {
+    createTrafficState,
+    restoreTrafficState,
+    recordTrafficVisit,
+    recordProductClick,
+    getTrafficInsights
+} = require("./traffic-analytics");
 const {
     PurchaseLimitStateError,
     createPurchaseLimit,
@@ -331,20 +341,32 @@ app.get("/shop.html", (req, res, next) => {
         return next();
     }
 
+    const product = findProductById(productId);
+    const isAutomated = /bot|crawler|spider|facebookexternalhit|preview/i.test(String(req.headers["user-agent"] || ""))
+        || /prefetch|prerender/i.test(String(req.headers["purpose"] || req.headers["sec-purpose"] || ""));
+    if (req.method === "GET" && product && !isHiddenInTotal(product) && !isAutomated) {
+        recordProductClick(trafficAnalytics, product);
+        schedulePersistState();
+    }
+
     const html = injectShareMetaToShopHtml(template, meta);
     setNoCacheHeaders(res);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
 });
 
+installAdminAuth(app);
+
 app.use(express.static("public", {
     setHeaders: (res, filePath) => {
         const normalized = String(filePath || "").replace(/\\/g, "/").toLowerCase();
         if (
             normalized.endsWith("/admin.html")
+            || normalized.endsWith("/admin-login.html")
             || normalized.endsWith("/shop.html")
             || normalized.endsWith("/index.html")
             || normalized.endsWith("/js/admin.js")
+            || normalized.endsWith("/js/admin-login.js")
             || normalized.endsWith("/css/admin.css")
         ) {
             setNoCacheHeaders(res);
@@ -858,6 +880,7 @@ let orders = cloneData(DEFAULT_ORDERS);
 
 let appSettings = cloneData(DEFAULT_SETTINGS);
 let purchaseLimit = createPurchaseLimit();
+let trafficAnalytics = createTrafficState();
 
 let dataRevision = 0;
 let persistTimer = null;
@@ -2104,6 +2127,7 @@ async function writeStateFileOnce() {
         orders,
         settings: appSettings,
         purchaseLimit,
+        trafficAnalytics,
         dataRevision
     };
 
@@ -2181,6 +2205,13 @@ function loadPersistedState() {
         const raw = fs.readFileSync(stateFile, "utf8");
         const parsed = JSON.parse(raw || "{}");
         purchaseLimit = restorePurchaseLimit(parsed.purchaseLimit);
+        try {
+            trafficAnalytics = restoreTrafficState(parsed.trafficAnalytics);
+        } catch (error) {
+            recordServerError(error);
+            console.error("Không thể đọc thống kê truy cập:", error.message);
+            trafficAnalytics = createTrafficState();
+        }
 
         products = Array.isArray(parsed.products) ? parsed.products : cloneData(DEFAULT_PRODUCTS);
         cart = Array.isArray(parsed.cart)
@@ -2204,6 +2235,7 @@ function loadPersistedState() {
         orders = cloneData(DEFAULT_ORDERS);
         appSettings = cloneData(DEFAULT_SETTINGS);
         purchaseLimit = createPurchaseLimit();
+        trafficAnalytics = createTrafficState();
         dataRevision = 0;
     }
 
@@ -2326,6 +2358,52 @@ app.get("/products/all", (req, res) => {
 
     res.json(productsToSend.map((product) => ({ ...product, isPurchaseLimited: isLimitedFabricCut(product) })));
 
+});
+
+app.post("/traffic/visit", writeLimiter, (req, res) => {
+    const { page, navigationType, fromShop } = req.body || {};
+    if (typeof page !== "string" || page.length > 2048 || !page.startsWith("/shop.html")
+        || !["navigate", "reload", "back_forward"].includes(navigationType)
+        || typeof fromShop !== "boolean") {
+        return res.status(400).json({ error: "Thông tin lượt truy cập không hợp lệ", requestId: req.requestId });
+    }
+
+    const url = new URL(page, "http://localhost");
+    const excluded = url.pathname !== "/shop.html"
+        || url.searchParams.has("productId")
+        || url.searchParams.get("view") === "cart"
+        || navigationType === "back_forward"
+        || (navigationType !== "reload" && fromShop)
+        || /bot|crawler|spider|facebookexternalhit|preview/i.test(String(req.headers["user-agent"] || ""))
+        || /prefetch|prerender/i.test(String(req.headers["purpose"] || req.headers["sec-purpose"] || ""));
+    if (!excluded) {
+        recordTrafficVisit(trafficAnalytics, req.sessionId);
+        schedulePersistState();
+    }
+    res.json({ counted: !excluded });
+});
+
+app.get("/traffic-insights", (req, res) => {
+    const hasDateRange = req.query.startDate !== undefined || req.query.endDate !== undefined;
+    const range = hasDateRange
+        ? { startDate: req.query.startDate, endDate: req.query.endDate }
+        : (req.query.days === undefined ? 7 : Number(req.query.days));
+    if (!hasDateRange && ![7, 30, 90].includes(range)) {
+        return res.status(400).json({ error: "Khoảng thời gian phải là 7, 30 hoặc 90 ngày", requestId: req.requestId });
+    }
+
+    try {
+        const insights = getTrafficInsights(trafficAnalytics, range, new Date(), orders);
+        insights.topProductClicks = insights.topProductClicks.map((product) => ({
+            ...product,
+            image: findProductById(product.productId)?.image || ""
+        }));
+        setNoCacheHeaders(res);
+        res.json(insights);
+    } catch (error) {
+        if (!(error instanceof RangeError)) throw error;
+        return res.status(400).json({ error: error.message, requestId: req.requestId });
+    }
 });
 
 app.get("/health", (req, res) => {

@@ -2004,6 +2004,349 @@ td img{
     white-space:nowrap;
 }
 
+/* Admin navigation refresh */
+.app-shell{
+    background:#f3f7f7;
+}
+
+.sidebar{
+    position:sticky;
+    top:0;
+    align-self:flex-start;
+    flex:0 0 292px;
+    width:292px;
+    height:100vh;
+    overflow-y:auto;
+    padding:22px 16px;
+    background:linear-gradient(165deg,#102c2a 0%,#10201f 55%,#111827 100%);
+    border-right:1px solid rgba(255,255,255,.08);
+    box-shadow:12px 0 35px rgba(15,23,42,.08);
+}
+
+.brand{
+    margin-bottom:22px;
+    padding:14px;
+    border:1px solid rgba(255,255,255,.1);
+    border-radius:18px;
+    background:rgba(255,255,255,.055);
+}
+
+.brand-top .brand-title{
+    flex-direction:row !important;
+    justify-content:flex-start;
+    gap:12px;
+    text-align:left;
+}
+
+.sidebar .brand-title img{
+    width:54px;
+    height:54px;
+    max-height:54px;
+    border-radius:15px;
+    padding:3px;
+}
+
+.brand-title h2{
+    color:#f8fafc;
+    font-size:18px;
+    letter-spacing:-.02em;
+}
+
+.brand > p{
+    margin-top:12px;
+    color:#a9c5c0;
+    font-size:12px;
+    line-height:1.5;
+}
+
+.brand-logo-actions{
+    justify-content:flex-start;
+    margin-top:12px;
+}
+
+.brand-logo-btn{
+    border-color:rgba(255,255,255,.2);
+    background:rgba(255,255,255,.08);
+    color:#e2efed;
+}
+
+.brand-logo-btn:hover{
+    border-color:rgba(52,211,153,.45);
+    background:rgba(16,185,129,.16);
+    color:#fff;
+}
+
+.admin-logout-btn{
+    width:100%;
+    margin-top:10px;
+    border:1px solid rgba(255,255,255,.13);
+    border-radius:11px;
+    padding:10px 12px;
+    background:rgba(255,255,255,.06);
+    color:#fecaca;
+    font-size:13px;
+    font-weight:700;
+    text-align:left;
+}
+
+.admin-logout-btn:hover{
+    background:rgba(239,68,68,.16);
+    color:#fff;
+}
+
+.nav-menu{
+    gap:6px;
+}
+
+.nav-section-label{
+    margin:12px 10px 3px;
+    color:#7fa7a0;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.13em;
+    text-transform:uppercase;
+}
+
+.nav-btn{
+    width:100%;
+    min-height:46px;
+    padding:11px 13px;
+    border:1px solid transparent;
+    border-radius:12px;
+    color:#d8e5e2;
+    font-size:14px;
+    font-weight:650;
+    transition:background .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+.nav-btn:hover{
+    border-color:rgba(255,255,255,.08);
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    transform:translateX(2px);
+}
+
+.nav-btn.active,
+.nav-btn.active:hover{
+    border-color:rgba(110,231,183,.2);
+    background:linear-gradient(110deg,rgba(5,150,105,.95),rgba(13,148,136,.72));
+    color:#fff;
+    box-shadow:0 8px 18px rgba(4,120,87,.2);
+}
+
+.nav-btn:focus-visible,
+.nav-submenu summary:focus-visible,
+.mobile-nav-toggle:focus-visible{
+    outline:2px solid #6ee7b7;
+    outline-offset:2px;
+}
+
+.nav-submenu{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin:2px 0 4px;
+    padding:10px;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;
+    background:rgba(0,0,0,.14);
+}
+
+.nav-submenu-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin:0;
+    padding:2px 4px;
+    color:#bad0cb;
+    cursor:pointer;
+    list-style:none;
+    text-transform:none;
+    letter-spacing:0;
+    font-size:12px;
+    font-weight:700;
+}
+
+.nav-submenu-title::-webkit-details-marker{
+    display:none;
+}
+
+.nav-submenu-title::after{
+    content:"+";
+    color:#8bb6ad;
+    font-size:18px;
+    line-height:1;
+}
+
+.nav-submenu[open] .nav-submenu-title::after{
+    content:"−";
+}
+
+#categoryNavLinks{
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+    max-height:42vh;
+    overflow-y:auto;
+    padding-right:3px;
+}
+
+.nav-submenu-link,
+.nav-submenu-children .nav-submenu-link{
+    padding:8px 10px;
+    border-radius:9px;
+    background:rgba(255,255,255,.045);
+    color:#d3e1de;
+    font-size:12px;
+    text-align:left;
+}
+
+.nav-submenu-link:hover,
+.nav-submenu-link.active{
+    background:rgba(16,185,129,.17);
+    color:#fff;
+}
+
+.main{
+    min-width:0;
+}
+
+.traffic-insights-status{
+    margin:0 0 14px;
+    padding:12px 15px;
+    border:1px solid #dbeafe;
+    border-radius:12px;
+    background:#eff6ff;
+    color:#1e40af;
+    font-size:14px;
+}
+
+.traffic-insights-status[hidden]{
+    display:none;
+}
+
+.traffic-product-clicks{
+    overflow:auto;
+}
+
+.traffic-product-clicks h2{
+    margin-bottom:6px;
+    color:#0f172a;
+}
+
+.traffic-product-clicks p{
+    margin-bottom:14px;
+    color:#64748b;
+    font-size:14px;
+}
+
+.traffic-product-image{
+    width:52px;
+    height:52px;
+    border-radius:10px;
+    object-fit:cover;
+}
+
+@media(max-width:768px){
+    .sidebar{
+        position:sticky;
+        top:0;
+        z-index:50;
+        flex:0 0 auto;
+        width:100%;
+        height:auto;
+        max-height:88px;
+        overflow:hidden;
+        padding:11px 14px;
+        border-right:0;
+        border-bottom:1px solid rgba(255,255,255,.1);
+        box-shadow:0 10px 25px rgba(15,23,42,.13);
+        transition:max-height .22s ease;
+    }
+
+    .sidebar.nav-open{
+        max-height:82vh;
+        overflow-y:auto;
+    }
+
+    .brand{
+        margin:0;
+        padding:0;
+        border:0;
+        background:transparent;
+    }
+
+    .brand-top{
+        min-height:64px;
+    }
+
+    .brand-top .brand-title{
+        gap:10px;
+    }
+
+    .sidebar .brand-title img{
+        width:42px;
+        height:42px;
+        max-height:42px;
+        border-radius:12px;
+    }
+
+    .brand-title h2{
+        font-size:16px;
+    }
+
+    .mobile-nav-toggle{
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        min-height:40px;
+        padding:0 13px;
+        border:1px solid rgba(255,255,255,.16);
+        border-radius:11px;
+        background:rgba(255,255,255,.08);
+        color:#f0fdfa;
+        font-size:13px;
+        font-weight:700;
+    }
+
+    .sidebar:not(.nav-open) .brand-logo-actions,
+    .sidebar:not(.nav-open) .brand > p,
+    .sidebar:not(.nav-open) .admin-logout-btn{
+        display:none;
+    }
+
+    .sidebar.nav-open .brand-logo-actions{
+        margin-top:8px;
+    }
+
+    .nav-menu{
+        display:none;
+        margin-top:12px;
+        padding-bottom:4px;
+    }
+
+    .sidebar.nav-open .nav-menu{
+        display:flex;
+    }
+
+    .nav-section-label{
+        margin-top:8px;
+    }
+
+    .nav-submenu{
+        margin:0;
+    }
+
+    #categoryNavLinks{
+        max-height:30vh;
+    }
+
+    .main{
+        margin-left:0;
+    }
+}
+
 .purchase-limit-active-status{
     display:block;
     margin-top:6px;

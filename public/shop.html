@@ -3512,6 +3512,34 @@
       closeCartPopup();
     }
 
+    async function recordShopPageVisit() {
+      const navigation = performance.getEntriesByType("navigation")[0];
+      let fromShop = false;
+      try {
+        const referrer = document.referrer ? new URL(document.referrer) : null;
+        fromShop = Boolean(referrer && referrer.origin === window.location.origin && referrer.pathname === "/shop.html");
+      } catch (error) {
+        console.warn("Không thể xác định trang trước khi ghi nhận lượt xem:", error);
+      }
+
+      try {
+        const response = await fetch(`${API}/traffic/visit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            page: window.location.pathname + window.location.search,
+            navigationType: navigation ? navigation.type : "navigate",
+            fromShop
+          }),
+          keepalive: true
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      } catch (error) {
+        console.error("Không thể ghi nhận lượt truy cập:", error);
+      }
+    }
+
+    recordShopPageVisit();
     bootstrapPage();
   </script>
 </body>

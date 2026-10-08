@@ -8,8 +8,10 @@
     "start": "node server.js",
     "start:pm2": "npx pm2 start ecosystem.config.js --env production",
     "stop:pm2": "npx pm2 delete gio-hang-quan-4",
-    "test": "node --test purchase-limit.test.js",
-    "test:purchase-limit": "node --test purchase-limit.test.js"
+    "test": "node --test purchase-limit.test.js traffic-analytics.test.js admin-auth.test.js",
+    "test:purchase-limit": "node --test purchase-limit.test.js",
+    "test:traffic": "node --test traffic-analytics.test.js",
+    "test:auth": "node --test admin-auth.test.js"
   },
   "keywords": [],
   "author": "",

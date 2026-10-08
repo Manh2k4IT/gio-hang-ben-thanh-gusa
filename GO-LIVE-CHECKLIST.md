@@ -3,9 +3,7 @@
 ## 1) Chuan bi GitHub
 
 - Push code moi nhat len repo.
-- Dam bao file nay ton tai:
-  - render.yaml o thu muc goc repo (neu repo chua thu muc gio-hang-quan-4)
-  - gio-hang-quan-4/render.yaml
+- Dam bao `render.yaml` nam o thu muc goc repository.
 
 ## 2) Tao service tren Render
 
@@ -14,12 +12,14 @@
 - Xac nhan Render doc duoc render.yaml.
 - Kiem tra co Web Service va Persistent Disk duoc tao.
 
-## 3) Kiem tra bien moi truong production
+## 3) Cau hinh admin va kiem tra bien moi truong production
 
 - Trong Render service -> Environment, doi chieu theo .env.production.example.
 - Bat buoc dung:
-  - DATA_DIR=/var/data/gio-hang-quan-4/data
-  - UPLOAD_DIR=/var/data/gio-hang-quan-4/uploads
+  - DATA_DIR=/var/data/gio-hang-ben-thanh/data
+  - UPLOAD_DIR=/var/data/gio-hang-ben-thanh/uploads
+- Tao `ADMIN_EMAIL` va `ADMIN_PASSWORD_HASH` (scrypt salt + key); khong dat mat khau ro trong repository.
+- Neu chua cau hinh hai bien admin, `/admin.html` van bi khoa va dang nhap tra loi `503`.
 
 ## 4) Verify sau deploy (3 URL)
 
@@ -28,7 +28,9 @@ Thay <domain> bang domain Render cua ban.
 - https://<domain>/health
   - Ky vong: ok=true, uptimeSec > 0
 - https://<domain>/admin.html
-  - Ky vong: vao duoc trang quan ly
+  - Ky vong: chuyen den `/admin-login.html` khi chua dang nhap
+- https://<domain>/admin-login.html
+  - Ky vong: hien form dang nhap; sau khi dang nhap moi vao duoc `/admin.html`
 - https://<domain>/shop.html
   - Ky vong: vao duoc trang mua hang
 
@@ -48,6 +50,7 @@ Thay <domain> bang domain Render cua ban.
   - /health ok
   - san pham vua tao van con
   - hinh upload van hien
+  - phien admin van dang nhap va thong ke luot truy cap van con
 
 ## 7) Canh bao truoc khi scale
 

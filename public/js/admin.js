@@ -2,6 +2,29 @@
   ? window.location.origin
   : "http://localhost:3000";
 const state = { products: [], orders: [] };
+async function adminFetch(input, options = {}) {
+  const headers = new Headers(options.headers);
+  headers.set("X-Admin-Request", "1");
+  const response = await window.fetch(input, { ...options, headers, credentials: "same-origin" });
+  if (response.status === 401 && !String(input).includes("/admin/auth/")) {
+    window.location.replace("/admin-login.html");
+    throw new Error("Phiên đăng nhập đã hết hạn");
+  }
+  return response;
+}
+const fetch = adminFetch;
+
+async function logoutAdmin() {
+  try {
+    const response = await adminFetch("/admin/auth/logout", { method: "POST" });
+    if (!response.ok) throw new Error("Không thể đăng xuất");
+    window.location.replace("/admin-login.html");
+  } catch (error) {
+    console.error("Không thể đăng xuất:", error);
+    showToast(error.message || "Không thể đăng xuất");
+  }
+}
+window.logoutAdmin = logoutAdmin;
 let purchaseLimitSettings = null;
 let purchaseLimitBusy = false;
 let purchaseLimitSelectedIds = new Set();
@@ -1582,14 +1605,170 @@ function previewImage() {
 }
 
 function switchTab(tabName) {
+  const targetButton = Array.from(document.querySelectorAll(".nav-btn")).find((btn) => btn.dataset.tab === tabName);
+  if (!targetButton || !document.getElementById(`${tabName}-view`)) tabName = "products";
+
+  const url = new URL(window.location.href);
+  url.hash = tabName;
+  if (url.href !== window.location.href) window.history.replaceState(window.history.state, "", url);
+
   document.querySelectorAll(".nav-btn").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.tab === tabName);
+    const active = btn.dataset.tab === tabName;
+    btn.classList.toggle("active", active);
+    if (active) btn.setAttribute("aria-current", "page");
+    else btn.removeAttribute("aria-current");
   });
 
   document.querySelectorAll(".view-panel").forEach((panel) => {
     panel.classList.toggle("active", panel.id === `${tabName}-view`);
   });
+  document.querySelector(".sidebar")?.classList.remove("nav-open");
+  document.getElementById("admin-menu-toggle")?.setAttribute("aria-expanded", "false");
+  if (tabName === "traffic-insights") loadTrafficInsights();
 }
+
+let trafficInsightsRequest = 0;
+let trafficDateFilterInitialized = false;
+
+function initializeTrafficDateFilter() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(new Date());
+  const part = (type) => parts.find((item) => item.type === type).value;
+  const today = `${part("year")}-${part("month")}-${part("day")}`;
+  const shiftDate = (offset) => new Date(Date.parse(`${today}T00:00:00Z`) + offset * 86400000).toISOString().slice(0, 10);
+  const start = document.getElementById("traffic-insights-start");
+  const end = document.getElementById("traffic-insights-end");
+  [start, end].forEach((input) => {
+    input.min = shiftDate(-89);
+    input.max = today;
+  });
+  if (!trafficDateFilterInitialized) {
+    start.value = shiftDate(-6);
+    end.value = today;
+    trafficDateFilterInitialized = true;
+  }
+}
+
+async function loadTrafficInsights() {
+  const request = ++trafficInsightsRequest;
+  const status = document.getElementById("traffic-insights-status");
+  initializeTrafficDateFilter();
+  const start = document.getElementById("traffic-insights-start");
+  const end = document.getElementById("traffic-insights-end");
+  end.setCustomValidity(start.value > end.value ? "Ngày kết thúc phải bằng hoặc sau ngày bắt đầu" : "");
+  if (!document.getElementById("traffic-insights-filter").reportValidity()) {
+    status.hidden = false;
+    status.textContent = "Vui lòng chọn khoảng ngày hợp lệ trong 90 ngày gần nhất.";
+    return;
+  }
+
+  const startDate = start.value;
+  const endDate = end.value;
+  const days = (Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) / 86400000 + 1;
+  status.hidden = false;
+  status.textContent = "Đang tải thống kê...";
+  const totalViews = document.getElementById("trafficTotalViews");
+  const uniqueVisitors = document.getElementById("trafficUniqueVisitors");
+  const totalOrders = document.getElementById("trafficTotalOrders");
+  const averageViews = document.getElementById("trafficAverageViews");
+  [totalViews, uniqueVisitors, totalOrders, averageViews].forEach((element) => {
+    element.textContent = "—";
+  });
+  const productClicksList = document.getElementById("traffic-product-clicks-list");
+  productClicksList.replaceChildren();
+
+  try {
+    const query = new URLSearchParams({ startDate, endDate });
+    const response = await fetch(`${API}/traffic-insights?${query}`);
+    const { raw, data, requestId } = await readApiResponseSafely(response);
+    if (request !== trafficInsightsRequest) return;
+    if (!response.ok) {
+      throw new Error(getApiErrorMessage(response, raw, data, "Không thể tải thống kê truy cập", requestId));
+    }
+    if (!data || !Array.isArray(data.daily) || data.daily.length !== days
+      || data.startDate !== startDate || data.endDate !== endDate
+      || !Number.isSafeInteger(data.totalOrders) || data.totalOrders < 0
+      || !Number.isSafeInteger(data.undatedOrders) || data.undatedOrders < 0
+      || !Array.isArray(data.topProductClicks) || data.topProductClicks.length > 10
+      || data.topProductClicks.some((product) => !product
+        || !Number.isSafeInteger(product.productId) || product.productId < 1
+        || typeof product.name !== "string" || typeof product.sku !== "string"
+        || typeof product.image !== "string"
+        || !Number.isSafeInteger(product.clicks) || product.clicks < 1)
+      || ![data.totalViews, data.uniqueVisitors, data.averageDailyViews].every((value) => Number.isFinite(value) && value >= 0)
+      || !Number.isFinite(Date.parse(data.startedAt))
+      || data.daily.some((row) => !row || !/^\d{4}-\d{2}-\d{2}$/.test(row.date)
+        || !Number.isSafeInteger(row.views) || row.views < 0
+        || !Number.isSafeInteger(row.visitors) || row.visitors < 0)) {
+      throw new Error("Dữ liệu thống kê truy cập không hợp lệ");
+    }
+
+    const numbers = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 });
+    totalViews.textContent = numbers.format(data.totalViews);
+    uniqueVisitors.textContent = numbers.format(data.uniqueVisitors);
+    totalOrders.textContent = numbers.format(data.totalOrders);
+    averageViews.textContent = numbers.format(data.averageDailyViews);
+
+    if (data.topProductClicks.length === 0) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 5;
+      cell.textContent = "Chưa có lượt xem sản phẩm trong khoảng thời gian này.";
+      row.appendChild(cell);
+      productClicksList.appendChild(row);
+    } else {
+      data.topProductClicks.forEach((product, index) => {
+        const row = document.createElement("tr");
+        const rankCell = document.createElement("td");
+        rankCell.textContent = String(index + 1);
+        const imageCell = document.createElement("td");
+        if (product.image) {
+          const image = document.createElement("img");
+          image.src = product.image;
+          image.alt = product.name;
+          image.className = "traffic-product-image";
+          image.loading = "lazy";
+          image.decoding = "async";
+          imageCell.appendChild(image);
+        } else {
+          imageCell.textContent = "—";
+        }
+        row.append(rankCell, imageCell);
+        [product.sku || "—", product.name, numbers.format(product.clicks)].forEach((value) => {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          row.appendChild(cell);
+        });
+        productClicksList.appendChild(row);
+      });
+    }
+
+    status.textContent = data.undatedOrders > 0
+      ? `${numbers.format(data.undatedOrders)} đơn thiếu ngày tạo hợp lệ nên không được tính theo ngày.`
+      : "";
+    status.hidden = data.undatedOrders === 0;
+  } catch (error) {
+    if (request !== trafficInsightsRequest) return;
+    console.error("Không thể tải thống kê truy cập:", error);
+    status.hidden = false;
+    status.textContent = error.message || "Không thể tải thống kê truy cập";
+  }
+}
+
+document.getElementById("traffic-insights-filter").addEventListener("submit", (event) => {
+  event.preventDefault();
+  loadTrafficInsights();
+});
+document.getElementById("traffic-insights-start").addEventListener("input", () => {
+  document.getElementById("traffic-insights-end").setCustomValidity("");
+});
+document.getElementById("traffic-insights-end").addEventListener("input", () => {
+  document.getElementById("traffic-insights-end").setCustomValidity("");
+});
 
 async function load() {
   const loading = document.getElementById("loading");
@@ -2492,6 +2671,15 @@ window.setProductInsightsMode = setProductInsightsMode;
 document.querySelectorAll(".nav-btn").forEach((btn) => {
   btn.addEventListener("click", () => switchTab(btn.dataset.tab));
 });
+
+document.getElementById("admin-menu-toggle").addEventListener("click", (event) => {
+  const sidebar = document.querySelector(".sidebar");
+  const expanded = sidebar.classList.toggle("nav-open");
+  event.currentTarget.setAttribute("aria-expanded", String(expanded));
+});
+
+const initialTab = window.location.hash.slice(1);
+if (initialTab) switchTab(initialTab);
 
 syncCategoryUi();
 

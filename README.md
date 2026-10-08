@@ -50,6 +50,16 @@ Trong trang quan tri, chon cac san pham vai khuc roi bat gioi han. Moi so dien t
 
 Chay kiem thu bang `npm run test:purchase-limit`.
 
+## Dang nhap quan tri va thong ke truy cap
+
+Trang quan tri tai `/admin.html` yeu cau dang nhap; neu chua co phien hop le, may chu chuyen den `/admin-login.html`. Tao email quan tri va mat khau manh, sau do cau hinh `ADMIN_EMAIL` va `ADMIN_PASSWORD_HASH` trong bien moi truong cua may chu. `ADMIN_PASSWORD_HASH` phai co dang `scrypt:<32 ky tu hex salt>:<128 ky tu hex key>`; tao salt ngau nhien va key bang `crypto.scryptSync(password, salt, 64)` tren may an toan, khong luu mat khau goc vao repository. Mau bien moi truong nam trong `.env.admin.example`. Neu chua cau hinh, trang quan tri van duoc khoa va API dang nhap tra loi `503`.
+
+Phien dang nhap duoc luu dang hash token trong `DATA_DIR/admin-sessions.json`, het han sau 30 ngay va bi vo hieu hoa khi doi thong tin dang nhap. Cac thao tac quan tri yeu cau cookie phien va header cung origin; endpoint dang nhap gioi han so lan thu.
+
+Tab `Luot truy cap` hien thi luot xem cua hang, khach truy cap khong trung, so don hang va top san pham duoc mo trong khoang ngay da chon. Du lieu theo ngay gio Viet Nam, luu trong `DATA_DIR/state.json` va tu dong gioi han con 90 ngay. Trang gio hang, trang chi tiet san pham, quay lai bang history, bot va prefetch khong duoc tinh la luot xem cua hang.
+
+Chay cac kiem thu bang `npm test`; co the chay rieng `npm run test:auth` hoac `npm run test:traffic`.
+
 ## Bien moi truong
 
 - `PORT`: cong server (mac dinh `3000`)
@@ -73,6 +83,8 @@ Chay kiem thu bang `npm run test:purchase-limit`.
 - `SOCKET_PING_INTERVAL_MS`, `SOCKET_PING_TIMEOUT_MS`, `SOCKET_MAX_BUFFER_BYTES`: timeout/bo nho Socket.IO
 - `CART_SESSION_COOKIE`: ten cookie de tach gio hang theo tung nguoi dung
 - `CART_SESSION_MAX_AGE_MS`: thoi gian ton tai cookie gio hang
+- `ADMIN_EMAIL`: email dung de dang nhap quan tri
+- `ADMIN_PASSWORD_HASH`: mat khau da bam scrypt theo mau trong `.env.admin.example`
 
 ## On dinh khi dong nguoi
 
@@ -107,14 +119,14 @@ Endpoint `GET /health` tra ve trang thai app de platform monitor.
 
 Da co file `render.yaml` san:
 
-- Neu repo cua ban la du an nay, dung file `render.yaml` o thu muc goc repo.
-- Neu repo cua ban co thu muc con `gio-hang-quan-4`, dung file `gio-hang-quan-4/render.yaml`.
+- Dung file `render.yaml` o thu muc goc repository.
 
 1. Push code len GitHub.
 2. Tren Render, tao New Blueprint va chon repo.
 3. Render se doc `render.yaml`, tao Web Service + Persistent Disk.
-4. Mo URL service, vao:
-   - `/admin.html` de quan ly
+4. Cau hinh `ADMIN_EMAIL` va `ADMIN_PASSWORD_HASH` trong Render Environment truoc khi dang nhap quan tri.
+5. Mo URL service, vao:
+   - `/admin-login.html` de dang nhap quan tri, sau do vao `/admin.html`
    - `/shop.html` de mua hang
 
 Luu y: Neu khong gan persistent disk thi data va upload se mat sau moi lan redeploy/restart.

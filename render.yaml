@@ -23,6 +23,10 @@ services:
         value: "true"
       - key: IMAGE_CONVERT_ON_UPLOAD_ENABLED
         value: "false"
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
     disk:
       name: gio-hang-ben-thanh-data
       mountPath: /var/data/gio-hang-ben-thanh

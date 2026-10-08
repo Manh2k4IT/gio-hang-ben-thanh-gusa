@@ -7,7 +7,7 @@
 
     <title>Quản lí đơn hàng kho vải bến thành</title>
 
-    <link rel="stylesheet" href="css/admin.css?v=20260718h">
+    <link rel="stylesheet" href="css/admin.css?v=20261007b">
     <style>
         .brand-title {
             display: flex;
@@ -31,6 +31,12 @@
             font-size: 20px;
             line-height: 1.2;
         }
+        .brand-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
         .brand-logo-actions {
             display: flex;
             justify-content: center;
@@ -53,6 +59,24 @@
             text-align: center;
             margin-top: 4px;
         }
+        .admin-logout-btn {
+            width: 100%;
+            margin-top: 10px;
+            border: 1px solid rgba(255,255,255,.16);
+            border-radius: 12px;
+            padding: 10px 12px;
+            background: rgba(255,255,255,.07);
+            color: #fecaca;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .admin-logout-btn:hover {
+            background: rgba(239,68,68,.2);
+            color: #fff;
+        }
+        .mobile-nav-toggle {
+            display: none;
+        }
     </style>
 </head>
 
@@ -64,9 +88,14 @@
 
         <div class="brand">
 
-            <div class="brand-title">
-                <img id="adminBrandLogo" src="/assets/default-logo.svg" alt="GUSA Logo" />
-                <h2>Giỏ hàng Gusa</h2>
+            <div class="brand-top">
+                <div class="brand-title">
+                    <img id="adminBrandLogo" src="/assets/default-logo.svg" alt="GUSA Logo" />
+                    <h2>Giỏ hàng Gusa</h2>
+                </div>
+                <button type="button" id="admin-menu-toggle" class="mobile-nav-toggle" aria-expanded="false" aria-controls="admin-navigation">
+                    ☰ Menu
+                </button>
             </div>
 
             <div class="brand-logo-actions">
@@ -75,23 +104,30 @@
             </div>
 
             <p>Quản trị bán hàng kho vải bến thành</p>
+            <button type="button" class="admin-logout-btn" onclick="logoutAdmin()">Đăng xuất</button>
 
         </div>
 
-        <nav class="nav-menu">
+        <nav class="nav-menu" id="admin-navigation" aria-label="Điều hướng quản trị">
+
+            <div class="nav-section-label">Quản lý cửa hàng</div>
 
             <button class="nav-btn active" data-tab="products">📦 Sản phẩm</button>
 
-            <div class="nav-submenu">
-                <div class="nav-submenu-title">Danh mục con</div>
+            <details class="nav-submenu" open>
+                <summary class="nav-submenu-title">🗂️ Danh mục sản phẩm</summary>
                 <div id="categoryNavLinks"></div>
-            </div>
+            </details>
 
             <button class="nav-btn" data-tab="orders">🧾 Khách đặt hàng</button>
 
             <button class="nav-btn" data-tab="customer-data">🗂️ Data tổng</button>
 
+            <div class="nav-section-label">Phân tích</div>
+
             <button class="nav-btn" data-tab="product-insights">🔥 Phân tích sản phẩm</button>
+
+            <button class="nav-btn" data-tab="traffic-insights">📊 Lượt truy cập</button>
 
         </nav>
 
@@ -536,6 +572,41 @@
 
         </section>
 
+        <section id="traffic-insights-view" class="view-panel">
+            <div class="container">
+                <header class="header">
+                    <div>
+                        <h1>📊 Phân tích lượt truy cập</h1>
+                        <p>Lượt xem cửa hàng, đơn hàng và sản phẩm được quan tâm trong 90 ngày gần nhất.</p>
+                    </div>
+                </header>
+                <form id="traffic-insights-filter" class="card product-insights-toolbar">
+                    <label for="traffic-insights-start">Từ ngày</label>
+                    <input type="date" id="traffic-insights-start" required>
+                    <label for="traffic-insights-end">Đến ngày</label>
+                    <input type="date" id="traffic-insights-end" required>
+                    <button type="submit" class="btn-add">Làm mới</button>
+                </form>
+                <p id="traffic-insights-status" class="traffic-insights-status" role="status" aria-live="polite" hidden></p>
+                <section class="dashboard">
+                    <div class="card stat-card"><span>Lượt xem</span><h2 id="trafficTotalViews">—</h2></div>
+                    <div class="card stat-card"><span>Khách truy cập</span><h2 id="trafficUniqueVisitors">—</h2></div>
+                    <div class="card stat-card"><span>Đơn hàng</span><h2 id="trafficTotalOrders">—</h2></div>
+                    <div class="card stat-card"><span>Trung bình lượt xem/ngày</span><h2 id="trafficAverageViews">—</h2></div>
+                </section>
+                <section class="card traffic-product-clicks">
+                    <h2>Sản phẩm được xem nhiều</h2>
+                    <p>Top 10 sản phẩm có lượt bấm xem cao nhất trong khoảng thời gian đã chọn.</p>
+                    <table>
+                        <thead>
+                            <tr><th>Hạng</th><th>Ảnh</th><th>SKU</th><th>Sản phẩm</th><th>Lượt bấm</th></tr>
+                        </thead>
+                        <tbody id="traffic-product-clicks-list"></tbody>
+                    </table>
+                </section>
+            </div>
+        </section>
+
     </main>
 
 </div>
@@ -697,7 +768,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
-<script src="js/admin.js?v=20261007a"></script>
+<script src="js/admin.js?v=20261007b"></script>
 
 </body>
 
