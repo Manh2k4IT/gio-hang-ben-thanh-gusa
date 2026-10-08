@@ -2795,6 +2795,7 @@ html{
 }
 
 .product-toolbar{
+    flex-wrap:wrap;
     justify-content:space-between;
     align-items:center;
     gap:16px;
@@ -2830,6 +2831,54 @@ html{
     outline-offset:2px;
 }
 
+.product-date-filter{
+    display:flex;
+    align-items:flex-end;
+    gap:8px;
+}
+
+.product-date-filter label{
+    display:grid;
+    gap:5px;
+    color:#64748b;
+    font-size:11px;
+    font-weight:700;
+}
+
+.product-toolbar .product-date-filter input{
+    width:148px;
+    height:42px;
+    padding:0 9px;
+    border:1px solid #d5dbe4;
+    border-radius:10px;
+    background:#fff;
+    color:#334155;
+    font:inherit;
+}
+
+.product-date-filter input:focus{
+    outline:none;
+    border-color:#008060;
+    box-shadow:0 0 0 3px rgba(0,128,96,.12);
+}
+
+.product-date-filter button{
+    height:42px;
+    padding:0 11px;
+    border:1px solid #d5dbe4;
+    border-radius:10px;
+    background:#fff;
+    color:#475569;
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+}
+
+.product-date-filter button:hover{
+    border-color:#008060;
+    color:#006b50;
+}
+
 .product-toolbar input{
     width:min(320px,100%);
     height:46px;
@@ -2843,6 +2892,12 @@ html{
     outline:none;
     border-color:#008060;
     box-shadow:0 0 0 3px rgba(0,128,96,.12);
+}
+
+.product-created-at{
+    color:#475569;
+    font-size:13px;
+    white-space:nowrap;
 }
 
 .traffic-dashboard{
@@ -2876,6 +2931,18 @@ html{
     .product-toolbar{
         align-items:stretch;
         padding:14px;
+    }
+
+    .product-date-filter{
+        flex-wrap:wrap;
+    }
+
+    .product-date-filter label{
+        flex:1 1 130px;
+    }
+
+    .product-toolbar .product-date-filter input{
+        width:100%;
     }
 
     .product-stock-filter{

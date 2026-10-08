@@ -3061,6 +3061,8 @@ app.post("/product/add", (req, res) => {
 
         id: Date.now(),
 
+        createdAt: new Date().toISOString(),
+
         name: nameValue,
         sku: skuValue,
         price: basePriceValue,

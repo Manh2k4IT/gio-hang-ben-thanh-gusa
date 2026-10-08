@@ -7,7 +7,7 @@
 
     <title>Quản lí đơn hàng kho vải bến thành</title>
 
-    <link rel="stylesheet" href="css/admin.css?v=20261008n">
+    <link rel="stylesheet" href="css/admin.css?v=20261008p">
     <style>
         .brand-title {
             display: flex;
@@ -252,6 +252,18 @@
                         <button type="button" data-stock-filter="all" aria-pressed="false" onclick="setProductStockFilter('all')">Tất cả</button>
                     </div>
 
+                    <div class="product-date-filter" role="group" aria-label="Lọc sản phẩm theo ngày đăng">
+                        <label>
+                            <span>Từ ngày</span>
+                            <input type="date" id="product-date-start" aria-label="Ngày đăng từ">
+                        </label>
+                        <label>
+                            <span>Đến ngày</span>
+                            <input type="date" id="product-date-end" aria-label="Ngày đăng đến">
+                        </label>
+                        <button type="button" id="product-date-clear" onclick="clearProductDateFilter()">Xóa ngày</button>
+                    </div>
+
                     <input
 
                         type="text"
@@ -285,6 +297,8 @@
                                 <th>Tên sản phẩm</th>
 
                                 <th>Danh mục</th>
+
+                                <th>Ngày đăng bán</th>
 
                                 <th>Giá</th>
 
@@ -869,7 +883,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
-<script src="js/admin.js?v=20261008n"></script>
+<script src="js/admin.js?v=20261008p"></script>
 
 </body>
 

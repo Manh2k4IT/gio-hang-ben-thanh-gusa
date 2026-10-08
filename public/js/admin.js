@@ -1850,6 +1850,7 @@ async function load() {
             </div>
           </td>
           <td>${categoryLabel}</td>
+          <td class="product-created-at">${formatProductUploadDate(p)}</td>
           <td>
             <div class="price-cell">
               <span class="price-live">${Number(basePrice || 0).toLocaleString()}đ</span>
@@ -1875,7 +1876,7 @@ async function load() {
       `;
     });
 
-    if (list) list.innerHTML = html || '<tr><td colspan="9">Không có sản phẩm</td></tr>';
+    if (list) list.innerHTML = html || '<tr><td colspan="10">Không có sản phẩm</td></tr>';
     renderPurchaseLimitStatus();
     renderPagination("product-pagination", "products", totalItems, PRODUCT_PAGE_SIZE, (page) => {
       setPaginationPage("products", page);
@@ -1909,6 +1910,69 @@ async function refreshDashboard() {
 
 let productStockFilter = "available";
 
+function getProductCreatedDate(product) {
+  const explicitDate = product?.createdAt || product?.created_at;
+  if (explicitDate) {
+    const date = new Date(explicitDate);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  // Older products use Date.now() as their ID, so it also records their upload time.
+  const idTimestamp = Number(product?.id);
+  if (!Number.isSafeInteger(idTimestamp) || idTimestamp < 946684800000 || idTimestamp > Date.now() + 86400000) {
+    return null;
+  }
+  return new Date(idTimestamp);
+}
+
+function formatProductUploadDate(product) {
+  const date = getProductCreatedDate(product);
+  if (!date) return "—";
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  }).format(date);
+}
+
+function getLocalDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function updateProductDateFilter() {
+  const startInput = document.getElementById("product-date-start");
+  const endInput = document.getElementById("product-date-end");
+  if (!startInput || !endInput) return;
+
+  const hasInvalidRange = Boolean(startInput.value && endInput.value && startInput.value > endInput.value);
+  endInput.setCustomValidity(hasInvalidRange ? "Ngày kết thúc phải từ ngày bắt đầu trở đi." : "");
+  if (hasInvalidRange) {
+    endInput.reportValidity();
+    return;
+  }
+
+  paginationState.products = 1;
+  load();
+}
+
+function clearProductDateFilter() {
+  const startInput = document.getElementById("product-date-start");
+  const endInput = document.getElementById("product-date-end");
+  if (!startInput || !endInput) return;
+  startInput.value = "";
+  endInput.value = "";
+  endInput.setCustomValidity("");
+  paginationState.products = 1;
+  load();
+}
+window.clearProductDateFilter = clearProductDateFilter;
+
 function setProductStockFilter(filter) {
   if (!["available", "empty", "all"].includes(filter)) {
     showToast("Bộ lọc tồn kho không hợp lệ");
@@ -1924,13 +1988,24 @@ function setProductStockFilter(filter) {
 window.setProductStockFilter = setProductStockFilter;
 
 function filterAdminProducts(products, search) {
+  const startDate = document.getElementById("product-date-start")?.value || "";
+  const endDate = document.getElementById("product-date-end")?.value || "";
   return products.filter((product) => {
     const stock = Number(product.stock);
     const matchesStock = productStockFilter === "all"
       || (productStockFilter === "available" ? stock > 0 : stock <= 0);
-    return matchesStock && `${product.name || ""} ${product.sku || ""}`.toLowerCase().includes(search);
+    const createdDate = getProductCreatedDate(product);
+    const uploadDate = createdDate ? getLocalDateInputValue(createdDate) : "";
+    const matchesDate = (!startDate && !endDate)
+      || Boolean(uploadDate && (!startDate || uploadDate >= startDate) && (!endDate || uploadDate <= endDate));
+    return matchesStock
+      && matchesDate
+      && `${product.name || ""} ${product.sku || ""}`.toLowerCase().includes(search);
   });
 }
+
+document.getElementById("product-date-start")?.addEventListener("input", updateProductDateFilter);
+document.getElementById("product-date-end")?.addEventListener("input", updateProductDateFilter);
 
 function getPurchaseLimitProducts() {
   const search = (document.getElementById("search")?.value || "").toLowerCase();
