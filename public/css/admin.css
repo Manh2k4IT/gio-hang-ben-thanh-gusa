@@ -327,6 +327,31 @@ button{
     color:#dc2626;
 }
 
+.stat-card-icon-orders{
+    background:#f1eafe;
+    color:#7c3aed;
+}
+
+.stat-card-icon-customers{
+    background:#e8f5ff;
+    color:#0284c7;
+}
+
+.stat-card-icon-year{
+    background:#f0f2f5;
+    color:#475569;
+}
+
+.stat-card-icon-top{
+    background:#fff5df;
+    color:#d97706;
+}
+
+.stat-card-icon-views{
+    background:#e8f5ff;
+    color:#0284c7;
+}
+
 .stat-card h2{
 
     font-size:38px;
@@ -2023,8 +2048,70 @@ td img{
 .purchase-limit-actions{
     display:flex;
     flex-wrap:wrap;
-    gap:12px;
-    margin-top:16px;
+    align-items:center;
+    justify-content:flex-end;
+    gap:9px;
+}
+
+.purchase-limit-panel{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:24px;
+    padding:20px 24px;
+    border:1px solid #e7ecef;
+    box-shadow:0 5px 22px rgba(15,23,42,.045);
+}
+
+.purchase-limit-heading{
+    display:flex;
+    min-width:0;
+    align-items:center;
+    gap:14px;
+}
+
+.purchase-limit-icon{
+    display:inline-flex;
+    width:46px;
+    height:46px;
+    flex:0 0 46px;
+    align-items:center;
+    justify-content:center;
+    border:1px solid #c8eee2;
+    border-radius:14px;
+    background:linear-gradient(145deg,#eaf9f4,#f2fbf8);
+    color:#008060;
+}
+
+.purchase-limit-icon svg{
+    width:24px;
+    height:24px;
+}
+
+.purchase-limit-heading h2{
+    margin:0;
+    color:#172b3a;
+    font-size:17px;
+    font-weight:750;
+    line-height:1.35;
+}
+
+.purchase-limit-heading p{
+    margin:4px 0 0;
+    color:#718096;
+    font-size:13px;
+    line-height:1.45;
+}
+
+.purchase-limit-controls{
+    display:flex;
+    flex:0 0 auto;
+    align-items:center;
+    gap:16px;
+}
+
+#purchase-limit-status{
+    margin:0;
 }
 
 #purchase-limit-toggle:disabled{
@@ -2034,9 +2121,80 @@ td img{
 }
 
 .purchase-limit-selected-count{
-    color:#dc2626;
-    font-size:20px;
-    font-weight:800;
+    display:inline-flex;
+    min-height:34px;
+    align-items:center;
+    padding:6px 11px;
+    border:1px solid #f3d6d6;
+    border-radius:999px;
+    background:#fff7f7;
+    color:#b4232b;
+    font-size:13px;
+    font-weight:750;
+    white-space:nowrap;
+}
+
+.purchase-limit-select-btn,
+.purchase-limit-toggle-btn{
+    display:inline-flex;
+    min-height:40px;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:0 14px;
+    border:1px solid transparent;
+    border-radius:10px;
+    font-size:13px;
+    font-weight:700;
+    transition:background .18s ease,border-color .18s ease,color .18s ease,transform .18s ease,box-shadow .18s ease;
+}
+
+.purchase-limit-select-btn svg,
+.purchase-limit-toggle-btn svg{
+    width:17px;
+    height:17px;
+    flex:0 0 17px;
+}
+
+.purchase-limit-select-btn{
+    border-color:#d8e2e8;
+    background:#fff;
+    color:#334155;
+}
+
+.purchase-limit-select-btn:hover:not(:disabled){
+    border-color:#8bcfba;
+    background:#f4fbf8;
+    color:#007456;
+}
+
+.purchase-limit-toggle-btn{
+    background:#008060;
+    color:#fff;
+    box-shadow:0 3px 8px rgba(0,128,96,.16);
+}
+
+.purchase-limit-toggle-btn:hover:not(:disabled){
+    background:#006b50;
+    box-shadow:0 5px 12px rgba(0,128,96,.2);
+    transform:translateY(-1px);
+}
+
+.purchase-limit-select-btn:disabled,
+.purchase-limit-toggle-btn:disabled{
+    opacity:.48;
+    cursor:not-allowed;
+    box-shadow:none;
+    transform:none;
+}
+
+#purchase-limit-toggle[aria-checked="true"]{
+    background:#b4232b;
+    box-shadow:0 3px 8px rgba(180,35,43,.15);
+}
+
+#purchase-limit-toggle[aria-checked="true"]:hover:not(:disabled){
+    background:#941d25;
 }
 
 .fabric-cut-badge{
@@ -2741,6 +2899,25 @@ html{
     #traffic-insights-filter input{
         width:100%;
         min-width:0;
+    }
+
+    .purchase-limit-panel{
+        align-items:flex-start;
+        flex-direction:column;
+        gap:16px;
+        padding:17px;
+    }
+
+    .purchase-limit-controls{
+        width:100%;
+        align-items:flex-start;
+        flex-direction:column;
+        gap:11px;
+    }
+
+    .purchase-limit-actions{
+        width:100%;
+        justify-content:flex-start;
     }
 }
 

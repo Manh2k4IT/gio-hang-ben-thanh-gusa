@@ -1960,7 +1960,8 @@ function updatePurchaseLimitSelectAllButton() {
   const products = getPurchaseLimitProducts();
   const allSelected = products.length > 0
     && products.every((product) => purchaseLimitSelectedIds.has(Number(product.id)));
-  button.textContent = allSelected ? "Bỏ chọn tất cả" : "Chọn tất cả";
+  const label = button.querySelector("span");
+  if (label) label.textContent = allSelected ? "Bỏ chọn tất cả" : "Chọn tất cả";
   button.setAttribute("aria-pressed", String(allSelected));
 }
 
@@ -2006,7 +2007,8 @@ function renderPurchaseLimitStatus() {
   if (!purchaseLimitSettings) return;
 
   toggle.setAttribute("aria-checked", String(purchaseLimitSettings.enabled));
-  toggle.textContent = purchaseLimitSettings.enabled ? "Tắt giới hạn" : "Bật giới hạn";
+  const toggleLabel = toggle.querySelector("span");
+  if (toggleLabel) toggleLabel.textContent = purchaseLimitSettings.enabled ? "Tắt giới hạn" : "Bật giới hạn";
   const selectedCount = document.createElement("strong");
   selectedCount.className = "purchase-limit-selected-count";
   selectedCount.textContent = `${purchaseLimitSettings.productIds.length} sản phẩm đã chọn`;
