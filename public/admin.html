@@ -7,7 +7,7 @@
 
     <title>Quản lí đơn hàng kho vải bến thành</title>
 
-    <link rel="stylesheet" href="css/admin.css?v=20261008h">
+    <link rel="stylesheet" href="css/admin.css?v=20261008k">
     <style>
         .brand-title {
             display: flex;
@@ -166,7 +166,12 @@
 
                     <div class="card stat-card">
 
-                        <span>Tổng sản phẩm</span>
+                        <span class="stat-card-label">
+                            <span class="stat-card-icon stat-card-icon-products" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m4.5 7.7 7.5 4.2 7.5-4.2M12 12v8.5M8 5.3l8 4.5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                            </span>
+                            <span>Tổng sản phẩm</span>
+                        </span>
 
                         <h2 id="totalProduct">0</h2>
 
@@ -174,7 +179,12 @@
 
                     <div class="card stat-card">
 
-                        <span>Tổng tồn kho</span>
+                        <span class="stat-card-label">
+                            <span class="stat-card-icon stat-card-icon-stock" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M4 6.5 12 3l8 3.5L12 10 4 6.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m4 11.5 8 3.5 8-3.5M4 16.5 12 20l8-3.5M4 6.5v10M20 6.5v10M12 10v10" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                            </span>
+                            <span>Tổng tồn kho</span>
+                        </span>
 
                         <h2 id="totalStock">0</h2>
 
@@ -182,7 +192,12 @@
 
                     <div class="card stat-card">
 
-                        <span>Sắp hết</span>
+                        <span class="stat-card-label">
+                            <span class="stat-card-icon stat-card-icon-low" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5 2.8 19a1 1 0 0 0 .9 1.5h16.6a1 1 0 0 0 .9-1.5L12 3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 9v5M12 17.2v.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                            </span>
+                            <span>Sắp hết</span>
+                        </span>
 
                         <h2 id="lowStock">0</h2>
 
@@ -190,7 +205,12 @@
 
                     <div class="card stat-card">
 
-                        <span>Hết hàng</span>
+                        <span class="stat-card-label">
+                            <span class="stat-card-icon stat-card-icon-empty" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="m8.5 8.5 7 7m0-7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                            </span>
+                            <span>Hết hàng</span>
+                        </span>
 
                         <h2 id="outStock">0</h2>
 

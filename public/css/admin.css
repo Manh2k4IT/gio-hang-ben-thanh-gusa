@@ -286,6 +286,47 @@ button{
 
 }
 
+.stat-card .stat-card-label{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.stat-card-icon{
+    display:inline-flex;
+    width:36px;
+    height:36px;
+    flex:0 0 36px;
+    align-items:center;
+    justify-content:center;
+    border-radius:11px;
+}
+
+.stat-card-icon svg{
+    width:20px;
+    height:20px;
+}
+
+.stat-card-icon-products{
+    background:#e9f2ff;
+    color:#2563eb;
+}
+
+.stat-card-icon-stock{
+    background:#e7f7f1;
+    color:#008060;
+}
+
+.stat-card-icon-low{
+    background:#fff5df;
+    color:#d97706;
+}
+
+.stat-card-icon-empty{
+    background:#fff0f0;
+    color:#dc2626;
+}
+
 .stat-card h2{
 
     font-size:38px;
